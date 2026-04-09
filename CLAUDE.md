@@ -43,7 +43,7 @@ This file provides context for Claude Code to assist with development of this pr
 │   └── setup_hf_repos.sh
 │
 ├── notebooks/            # Training notebooks
-│   └── Auto_Train.ipynb  # Auto-training (git clones latest code)
+│   └── Gemma4_Vietnamese_Legal_Train.ipynb  # Full pipeline with flags
 │
 ├── rag/                  # RAG pipeline
 │   └── pipeline.py       # Complete RAG with ChromaDB + GGUF
@@ -84,6 +84,61 @@ echo "HF Username: $HF_USERNAME"
 - `HF_DATASET_NAME`, `HF_MODEL_NAME` - Repository names
 - `CRAWLER_MAX_PAGES`, `CRAWLER_DELAY` - Crawler settings
 - `BASE_MODEL`, `BATCH_SIZE`, `LEARNING_RATE` - Training hyperparameters
+
+## Training on Colab
+
+### Full Pipeline Notebook (`Gemma4_Vietnamese_Legal_Train.ipynb`)
+
+**Flag-controlled training notebook** - All features controlled by flags in first cell.
+
+**Available Flags:**
+```python
+# Data Pipeline
+CRAWL_ENABLED = False  # Enable/disable crawling
+CRAWL_PAGES = 100  # Number of pages to crawl
+DOWNLOAD_HF_DATASET = True  # Download base dataset
+MERGE_DATASETS = True  # Merge crawled + HF data
+UPLOAD_DATASET_TO_HF = False  # Upload merged dataset to HF
+
+# Training
+RUN_TRAINING = True  # Run fine-tuning
+TRAINING_STAGE = "pretrain"  # "pretrain", "sft", "both"
+MAX_SEQ_LENGTH = 4096
+BATCH_SIZE = 2
+LEARNING_RATE = 2e-4
+NUM_EPOCHS = 1
+
+# Export & Upload
+EXPORT_TO_GGUF = True  # Export to GGUF format
+QUANTIZATION = "q4_k_m"  # Quantization method
+UPLOAD_MODEL_TO_HF = False  # Upload model to HF
+
+# Evaluation
+GENERATE_SCORES = True  # Generate evaluation scores
+RUN_BENCHMARKS = False  # Run detailed benchmarks
+
+# Git
+PUSH_RESULTS_TO_GITHUB = False  # Push training results
+```
+
+**Quick Presets:**
+```python
+# Fast test (1K docs, 30 min)
+CRAWL_ENABLED = False; GENERATE_SCORES = True; RUN_BENCHMARKS = False
+
+# Full pipeline
+CRAWL_ENABLED = True; UPLOAD_DATASET_TO_HF = True; UPLOAD_MODEL_TO_HF = True
+
+# Training only (skip crawling)
+CRAWL_ENABLED = False; DOWNLOAD_HF_DATASET = True; RUN_TRAINING = True
+```
+
+**Workflow:**
+1. Run `./scripts/colab.sh` to open Colab
+2. Upload `Gemma4_Vietnamese_Legal_Train.ipynb`
+3. Edit flags in first cell
+4. Run all cells
+5. Model downloads automatically when complete
 
 ## Development Workflow
 

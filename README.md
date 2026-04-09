@@ -4,6 +4,46 @@ End-to-end pipeline to crawl Vietnamese legal documents, prepare datasets, and f
 
 ## 🚀 Quick Start
 
+### Option A: Train on Google Colab (Fastest)
+
+**One notebook, everything automated!** 🚀
+
+```bash
+# Clone the repository
+git clone git@github.com:duyet/gemma-4-finetune-vietnamese-legal-documents.git
+cd gemma-4-finetune-vietnamese-legal-documents
+
+# Open Colab helper
+./scripts/colab.sh
+```
+
+**Then in Colab:**
+1. Upload `notebooks/Gemma4_Vietnamese_Legal_Train.ipynb`
+2. Set flags in first cell (control what runs)
+3. Run all cells
+
+**Control flags:**
+- `CRAWL_ENABLED` - Enable/disable crawling
+- `DOWNLOAD_HF_DATASET` - Download base dataset
+- `RUN_TRAINING` - Run fine-tuning
+- `EXPORT_TO_GGUF` - Export quantized model
+- `GENERATE_SCORES` - Generate evaluation scores
+- And more...
+
+**The notebook handles:**
+- ✅ Clone latest code from GitHub
+- ✅ Crawl fresh data (optional)
+- ✅ Download/merge datasets
+- ✅ Upload to HuggingFace (optional)
+- ✅ Fine-tune Gemma 4 E2B
+- ✅ Export to GGUF format
+- ✅ Generate scores & metrics
+- ✅ Download trained model
+
+---
+
+### Option B: Local Setup
+
 ### 1. Clone and Install
 
 ```bash
@@ -83,9 +123,16 @@ uv run python crawler/playwright_crawler.py --stats
 uv run python crawler/playwright_crawler.py --workers 4
 ```
 
-### 4. Fine-tune on Colab
+### 4. Fine-tune on Colab (or Local)
 
-Upload and run `notebooks/Auto_Train.ipynb` to Google Colab.
+**On Colab (Recommended):**
+- Upload `notebooks/Gemma4_Vietnamese_Legal_Train.ipynb`
+- Set flags to control what runs
+- Run all cells
+
+**Locally:**
+- Use the scripts in `scripts/` directory
+- See `CLAUDE.md` for development workflow
 
 **The notebook will:**
 - Auto-clone latest code from GitHub
