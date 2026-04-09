@@ -40,11 +40,14 @@ def main(output: str, split: str):
             # Download metadata (uses "data" split, not "train")
             metadata = load_dataset("th1nhng0/vietnamese-legal-documents", "metadata", split="data")
             print(f"✅ Loaded {len(metadata)} metadata records")
+            print(f"   Sample fields: {list(metadata[0].keys())[:10]}")
 
             # Download content - standard approach works fine
             print(f"📥 Loading content...")
             content = load_dataset("th1nhng0/vietnamese-legal-documents", "content", split="data")
             print(f"✅ Loaded {len(content)} content records")
+            print(f"   Sample fields: {list(content[0].keys())[:10]}")
+            print(f"   Sample doc_id: {content[0].get('doc_id', 'N/A')}")
 
             # Convert to pandas and build dict
             print("📝 Building content lookup dictionary...")
@@ -62,6 +65,9 @@ def main(output: str, split: str):
 
             # Convert to our format
             our_format = []
+            docs_with_content = 0
+            docs_without_content = 0
+
             for meta in tqdm(metadata, desc="Merging metadata and content"):
                 doc_id = str(meta.get("doc_id", ""))
                 content_item = content_dict.get(doc_id, {})
@@ -97,8 +103,15 @@ def main(output: str, split: str):
                     soup = BeautifulSoup(our_doc["content_html"], "lxml")
                     our_doc["content_text"] = soup.get_text(separator="\n", strip=True)
                     our_doc["content_markdown"] = md(our_doc["content_html"])
+                    docs_with_content += 1
+                else:
+                    docs_without_content += 1
 
                 our_format.append(our_doc)
+
+            print(f"\n📊 Merge statistics:")
+            print(f"   Documents with content: {docs_with_content:,}")
+            print(f"   Documents without content: {docs_without_content:,}")
 
             # Save as Parquet
             df = pd.DataFrame(our_format)
