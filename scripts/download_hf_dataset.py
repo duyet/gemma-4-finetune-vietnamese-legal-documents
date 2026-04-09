@@ -102,6 +102,7 @@ def main(output: str, split: str):
         try:
             rels = load_dataset("th1nhng0/vietnamese-legal-documents", "relationships", split="data")
             print(f"✅ Loaded {len(rels)} relationships")
+            print(f"⚠️  Skipping relationships save - not needed for training")
 
             # Save as Parquet
             df_rels = pd.DataFrame(rels)
