@@ -41,8 +41,8 @@ def main(output: str, split: str):
             metadata = load_dataset("th1nhng0/vietnamese-legal-documents", "metadata", split="data")
             print(f"✅ Loaded {len(metadata)} metadata records")
 
-            # Download content - use streaming for large 412MB file with large_string dtype
-            print(f"📥 Loading content via streaming (412MB file)...")
+            # Download content - use streaming mode to handle large_string dtype
+            print(f"📥 Loading content via streaming...")
             content_stream = load_dataset("th1nhng0/vietnamese-legal-documents", "content", split="data", streaming=True)
 
             # Build content dict directly from streaming to avoid memory issues
