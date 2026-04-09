@@ -63,16 +63,16 @@ def main(output: str, split: str):
             print("📝 Building content lookup dictionary...")
             content_df_filtered = (
                 content_df
-                .filter(pl.col("doc_id").is_not_null())
+                .filter(pl.col("id").is_not_null())
                 .select([
-                    pl.col("doc_id").cast(str),
+                    pl.col("id").cast(str),
                     pl.col("content_html")
                 ])
             )
 
-            # Create lookup dict
+            # Create lookup dict - both metadata and content use 'id' field
             content_lookup = dict(zip(
-                content_df_filtered["doc_id"].to_list(),
+                content_df_filtered["id"].to_list(),
                 content_df_filtered["content_html"].to_list()
             ))
 
