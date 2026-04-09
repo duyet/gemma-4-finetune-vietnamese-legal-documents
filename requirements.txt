@@ -1,0 +1,26 @@
+# Web crawling
+scrapy>=2.11.0
+scrapy-user-agents>=0.1.1
+scrapy-playwright>=0.0.30
+
+# Data processing
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+html5lib>=1.1
+markdownify>=0.13.1  # HTML to Markdown conversion
+html2text>=2024.2.26  # Alternative HTML to Markdown
+
+# Vietnamese NLP
+underthesea>=6.8.0
+
+# HuggingFace
+datasets>=3.0.0
+huggingface-hub>=0.23.0
+
+# ML/Training (for local testing)
+transformers>=4.46.0
+torch>=2.5.0
+
+# Utilities
+python-dotenv>=1.0.0
+tqdm>=4.66.0

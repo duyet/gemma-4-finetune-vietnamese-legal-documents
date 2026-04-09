@@ -1,0 +1,42 @@
+[project]
+name = "tvpl"
+version = "0.1.0"
+description = "Vietnamese Legal Documents Crawler and Dataset for Fine-tuning Gemma 4"
+requires-python = ">=3.10"
+dependencies = [
+    "scrapy>=2.11.0",
+    "beautifulsoup4>=4.12.0",
+    "lxml>=5.0.0",
+    "markdownify>=0.13.1",
+    "underthesea>=6.8.0",
+    "datasets>=3.0.0",
+    "huggingface-hub>=0.23.0",
+    "click>=8.1.0",
+    "pandas>=2.0.0",
+    "tqdm>=4.66.0",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "black>=24.0.0",
+    "ruff>=0.1.0",
+]
+rag = [
+    "chromadb>=0.4.0",
+    "langchain>=0.1.0",
+    "langchain-community>=0.1.0",
+    "sentence-transformers>=2.2.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0.0",
+    "black>=24.0.0",
+    "ruff>=0.1.0",
+]
