@@ -37,12 +37,12 @@ def main(output: str, split: str):
     if split in ["documents", "all"]:
         print(f"\n[1/4] Downloading metadata and content...")
         try:
-            # Download metadata
-            metadata = load_dataset("th1nhng0/vietnamese-legal-documents", "metadata", split="train")
+            # Download metadata (uses "data" split, not "train")
+            metadata = load_dataset("th1nhng0/vietnamese-legal-documents", "metadata", split="data")
             print(f"✅ Loaded {len(metadata)} metadata records")
 
             # Download content
-            content = load_dataset("th1nhng0/vietnamese-legal-documents", "content", split="train")
+            content = load_dataset("th1nhng0/vietnamese-legal-documents", "content", split="data")
             print(f"✅ Loaded {len(content)} content records")
 
             # Merge metadata and content by document ID
