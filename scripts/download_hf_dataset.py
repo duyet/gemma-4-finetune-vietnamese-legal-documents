@@ -118,9 +118,24 @@ def main(output: str, split: str):
         existing_columns = [col for col in expected_columns if col in meta_pd.columns]
         result_pd = meta_pd[existing_columns]
 
-        # Save directly with pandas (fast and simple)
-        print("📝 Saving to parquet (this may take 1-2 minutes for 153k documents)...")
-        result_pd.to_parquet(output_path / "documents.parquet", index=False, compression="snappy")
+        # Save in chunks with progress indication (faster and shows progress)
+        print("📝 Saving to parquet in chunks...")
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        # Convert to pyarrow table (faster than pandas to_parquet for large data)
+        print("   Converting to Arrow format...")
+        table = pa.Table.from_pandas(result_pd)
+
+        # Write in chunks with progress
+        print("   Writing to disk...")
+        pq.write_table(
+            table,
+            output_path / "documents.parquet",
+            compression='snappy',
+            row_group_size=10000  # Write in 10k row groups
+        )
+
         print(f"✅ Saved {len(result_pd)} documents to {output_path / 'documents.parquet'}")
 
         # Show file size
