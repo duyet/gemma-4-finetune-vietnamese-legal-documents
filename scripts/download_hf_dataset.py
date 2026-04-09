@@ -124,6 +124,9 @@ def main(output: str, split: str):
         print(f"   Training will load from HuggingFace automatically (no save needed)")
         print(f"   This is faster and more reliable")
 
+        # Create marker file so build_pretrain knows data was validated
+        (output_path / ".hf_data_validated").touch()
+
         # Statistics
         docs_with_content = result_pd["content_html"].apply(lambda x: bool(x and isinstance(x, str) and x.strip())).sum()
         print(f"\n📊 Statistics:")

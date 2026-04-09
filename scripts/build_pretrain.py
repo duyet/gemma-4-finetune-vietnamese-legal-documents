@@ -41,6 +41,22 @@ def main(input: str, output: str, include_meta: bool, format: str):
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Check if input file exists
+    if not input_path.exists():
+        print(f"⚠️  Input file not found: {input_path}")
+        # Check if HF data was validated
+        if (input_path.parent / ".hf_data_validated").exists():
+            print("    HuggingFace data was validated successfully")
+            print("    Training will load from HuggingFace automatically")
+            print("    Skipping corpus build (not needed)")
+            print("\n✅ Ready to train!")
+            return
+        else:
+            print("    Run download_hf_dataset.py first or let training load from HF")
+            print("    Training will load from HuggingFace automatically")
+            print("\n✅ Ready to train!")
+            return
+
     print(f"Loading documents from {input_path}")
     df = pd.read_parquet(input_path)
 
