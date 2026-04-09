@@ -42,22 +42,27 @@ def main(output: str, split: str):
             print(f"✅ Loaded {len(metadata)} metadata records")
             print(f"   Sample fields: {list(metadata[0].keys())[:10]}")
 
-            # Download content - use HuggingFace native Polars format
-            print(f"📥 Loading content with Polars (via HuggingFace)...")
-            content = load_dataset(
-                "th1nhng0/vietnamese-legal-documents",
-                "content",
-                split="data",
-                format="polars"  # Native Polars support!
-            )
-            print(f"✅ Loaded content table with {len(content)} rows")
-            print(f"   Sample fields: {content.columns[:10]}")
-            print(f"   Sample doc_id: {content[0, 'doc_id']}")
+            # Download content - read parquet directly with Polars
+            print(f"📥 Loading content with Polars...")
+            from huggingface_hub import hf_hub_download
 
-            # Build content dict using Polars operations
+            # Download content.parquet
+            content_path = hf_hub_download(
+                repo_id="th1nhng0/vietnamese-legal-documents",
+                filename="data/content.parquet",
+                repo_type="dataset",
+            )
+
+            # Read with Polars
+            content_df = pl.read_parquet(content_path)
+            print(f"✅ Loaded content table with {len(content_df)} rows")
+            print(f"   Sample fields: {content_df.columns[:10]}")
+            print(f"   Sample doc_id: {content_df[0, 'doc_id']}")
+
+            # Build content dict using Polars
             print("📝 Building content lookup dictionary...")
-            content_df = (
-                content
+            content_df_filtered = (
+                content_df
                 .filter(pl.col("doc_id").is_not_null())
                 .select([
                     pl.col("doc_id").cast(str),
@@ -67,8 +72,8 @@ def main(output: str, split: str):
 
             # Create lookup dict
             content_lookup = dict(zip(
-                content_df["doc_id"].to_list(),
-                content_df["content_html"].to_list()
+                content_df_filtered["doc_id"].to_list(),
+                content_df_filtered["content_html"].to_list()
             ))
 
             print(f"✅ Indexed {len(content_lookup)} content records")
@@ -103,7 +108,7 @@ def main(output: str, split: str):
                     "tags": [],
                     "language": "vn",
                     "crawled_at": datetime.now().isoformat(),
-                    "crawl_source": "huggingface:th1nh0/vietnamese-legal-documents",
+                    "crawl_source": "huggingface:th1nhng0/vietnamese-legal-documents",
                 }
 
                 # Extract text from HTML
