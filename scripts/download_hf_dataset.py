@@ -17,7 +17,6 @@ import click
 from datasets import load_dataset
 from tqdm import tqdm
 import pandas as pd
-import polars as pl
 
 
 @click.command()
@@ -43,6 +42,7 @@ def main(output: str, split: str):
 
         print(f"\n[2/3] Downloading content (HTML only, no extraction)...")
         from huggingface_hub import hf_hub_download
+        import pyarrow.parquet as pq
 
         # Download content.parquet
         content_path = hf_hub_download(
@@ -51,8 +51,9 @@ def main(output: str, split: str):
             repo_type="dataset",
         )
 
-        # Read with Polars
-        content_df = pl.read_parquet(content_path)
+        # Read content parquet directly with pyarrow
+        content_table = pq.read_table(content_path)
+        content_df = content_table.to_pandas()
         print(f"✅ Loaded {len(content_df)} content records")
 
         print(f"\n[3/3] Merging and saving (defer text extraction)...")
@@ -117,20 +118,17 @@ def main(output: str, split: str):
         existing_columns = [col for col in expected_columns if col in meta_pd.columns]
         result_pd = meta_pd[existing_columns]
 
-        # Convert to Polars for fast Parquet write
-        print("📝 Converting to Polars for save...")
-        result_df = pl.from_pandas(result_pd)
-
-        # Save immediately - NO HTML PARSING
-        result_df.write_parquet(output_path / "documents.parquet")
-        print(f"✅ Saved {len(result_df)} documents to {output_path / 'documents.parquet'}")
+        # Save directly with pandas (fast and simple)
+        print("📝 Saving to parquet...")
+        result_pd.to_parquet(output_path / "documents.parquet", index=False)
+        print(f"✅ Saved {len(result_pd)} documents to {output_path / 'documents.parquet'}")
 
         # Statistics
-        docs_with_content = result_df["content_html"].apply(lambda x: bool(x and x.strip())).sum()
+        docs_with_content = result_pd["content_html"].apply(lambda x: bool(x and isinstance(x, str) and x.strip())).sum()
         print(f"\n📊 Statistics:")
-        print(f"   Total documents: {len(result_df):,}")
+        print(f"   Total documents: {len(result_pd):,}")
         print(f"   Documents with HTML: {docs_with_content:,}")
-        print(f"   Documents without HTML: {len(result_df) - docs_with_content:,}")
+        print(f"   Documents without HTML: {len(result_pd) - docs_with_content:,}")
         print(f"\n✅ Download complete!")
         print(f"\nℹ️  Text extraction will be done in build_pretrain stage")
         print(f"   This approach is ~10x faster and produces cleaner text")
