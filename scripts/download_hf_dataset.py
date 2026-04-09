@@ -39,6 +39,7 @@ def main(output: str, split: str):
         print(f"\n[1/3] Downloading metadata...")
         metadata = load_dataset("th1nhng0/vietnamese-legal-documents", "metadata", split="data")
         print(f"✅ Loaded {len(metadata)} metadata records")
+        print(f"   Columns in metadata: {list(metadata.column_names)[:15]}...")  # Show first 15
 
         print(f"\n[2/3] Downloading content (HTML only, no extraction)...")
         from huggingface_hub import hf_hub_download
@@ -70,36 +71,51 @@ def main(output: str, split: str):
         print("📝 Merging content with metadata...")
         meta_pd["content_html"] = meta_pd["id"].astype(str).map(content_dict)
 
-        # Add missing fields for our format
-        meta_pd["issuing_authority"] = ""
-        meta_pd["status"] = ""
-        meta_pd["field"] = ""
-        meta_pd["content_text"] = ""
-        meta_pd["content_markdown"] = ""
-        meta_pd["category"] = ""
-        meta_pd["sub_category"] = ""
-        meta_pd["tags"] = [[] for _ in range(len(meta_pd))]
-        meta_pd["language"] = "vn"
-        meta_pd["crawled_at"] = datetime.now().isoformat()
-        meta_pd["crawl_source"] = "huggingface:th1nhng0/vietnamese-legal-documents"
+        # Add missing fields for our format (only those that don't exist)
+        required_fields = {
+            "url": "",
+            "issuing_authority": "",
+            "status": "",
+            "field": "",
+            "content_text": "",
+            "content_markdown": "",
+            "category": "",
+            "sub_category": "",
+            "language": "vn",
+            "crawled_at": datetime.now().isoformat(),
+            "crawl_source": "huggingface:th1nhng0/vietnamese-legal-documents",
+        }
+
+        for field, default_value in required_fields.items():
+            if field not in meta_pd.columns:
+                meta_pd[field] = default_value
+
+        # Add tags column (list for each row)
+        if "tags" not in meta_pd.columns:
+            meta_pd["tags"] = [[] for _ in range(len(meta_pd))]
 
         # Rename Vietnamese fields to our schema
-        meta_pd = meta_pd.rename(columns={
+        rename_map = {
             "id": "doc_id",
             "so_ky_hieu": "doc_number",
             "loai_van_ban": "doc_type",
             "ngay_ban_hanh": "issue_date",
             "ngay_co_hieu_luc": "effective_date",
             "nganh": "sector",
-        })
+        }
+        for old_name, new_name in rename_map.items():
+            if old_name in meta_pd.columns:
+                meta_pd = meta_pd.rename(columns={old_name: new_name})
 
-        # Reorder columns to match expected schema
-        result_pd = meta_pd[[
+        # Reorder columns to match expected schema (only select existing columns)
+        expected_columns = [
             "url", "doc_id", "title", "doc_number", "doc_type",
             "issuing_authority", "issue_date", "effective_date", "status",
             "sector", "field", "content_html", "content_text", "content_markdown",
             "category", "sub_category", "tags", "language", "crawled_at", "crawl_source"
-        ]]
+        ]
+        existing_columns = [col for col in expected_columns if col in meta_pd.columns]
+        result_pd = meta_pd[existing_columns]
 
         # Convert to Polars for fast Parquet write
         print("📝 Converting to Polars for save...")
