@@ -119,7 +119,7 @@ def extract_passages(doc: dict, max_tokens: int = 512, overlap: int = 50) -> lis
 
 
 @click.command()
-@click.option("--input", "-i", default="data/raw/documents.jsonl", help="Input JSONL file")
+@click.option("--input", "-i", default="data/hf_downloaded/documents.parquet", help="Input file (Parquet or JSONL)")
 @click.option("--output", "-o", default="data/processed/documents.parquet", help="Output Parquet file")
 @click.option("--passages-output", "-p", default="data/processed/passages.parquet", help="Passages output file")
 @click.option("--max-tokens", default=512, help="Max tokens per passage")
@@ -137,7 +137,17 @@ def main(input: str, output: str, passages_output: str, max_tokens: int):
     all_passages = []
     errors = []
 
-    for doc in tqdm(list(load_jsonl(input_path))):
+    # Detect input format and load accordingly
+    if input_path.suffix == ".parquet":
+        import pandas as pd
+        df = pd.read_parquet(input_path)
+        docs_list = df.to_dict("records")
+        print(f"Loaded {len(docs_list)} documents from Parquet")
+    else:
+        docs_list = list(load_jsonl(input_path))
+        print(f"Loaded {len(docs_list)} documents from JSONL")
+
+    for doc in tqdm(docs_list):
         if not validate_document(doc):
             errors.append({"doc_id": doc.get("doc_id"), "error": "Validation failed"})
             continue

@@ -30,7 +30,7 @@ from tqdm import tqdm
 
 
 @click.command()
-@click.option("--input", "-i", default="data/processed/documents.parquet", help="Input Parquet file")
+@click.option("--input", "-i", default="data/hf_downloaded/documents.parquet", help="Input Parquet file")
 @click.option("--output", "-o", default="data/pretrain/corpus.txt", help="Output corpus file")
 @click.option("--include-meta", is_flag=True, help="Include metadata headers")
 @click.option("--format", type=click.Choice(["plain", "chatml"]), default="plain", help="Output format")
