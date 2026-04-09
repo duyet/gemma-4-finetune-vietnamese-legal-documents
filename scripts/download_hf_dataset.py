@@ -37,7 +37,7 @@ def main(output: str, split: str):
     if split in ["documents", "all"]:
         print(f"\n[1/4] Downloading documents...")
         try:
-            docs = load_dataset("th1nh0/vietnamese-legal-documents", "documents", split="train")
+            docs = load_dataset("th1nhng0/vietnamese-legal-documents", "documents", split="train")
             print(f"✅ Loaded {len(docs)} documents")
 
             # Convert to our format
@@ -63,7 +63,7 @@ def main(output: str, split: str):
                     "tags": [],
                     "language": "vn",
                     "crawled_at": datetime.now().isoformat(),
-                    "crawl_source": "huggingface:th1nh0/vietnamese-legal-documents",
+                    "crawl_source": "huggingface:th1nhng0/vietnamese-legal-documents",
                 }
 
                 # Extract text from HTML
@@ -89,7 +89,7 @@ def main(output: str, split: str):
     if split in ["all"]:
         print(f"\n[2/4] Downloading relationships...")
         try:
-            rels = load_dataset("th1nh0/vietnamese-legal-documents", "relationships", split="data")
+            rels = load_dataset("th1nhng0/vietnamese-legal-documents", "relationships", split="data")
             print(f"✅ Loaded {len(rels)} relationships")
 
             # Save as Parquet
@@ -192,7 +192,7 @@ def main(output: str, split: str):
     print(f"\n✅ Ready for training!")
     print(f"\nTo use with training:")
     print(f"  from datasets import load_dataset")
-    print(f"  docs = load_dataset(\"th1nh0/vietnamese-legal-documents\", \"documents\")")
+    print(f"  docs = load_dataset(\"th1nhng0/vietnamese-legal-documents\", \"documents\")")
 
 
 if __name__ == "__main__":
