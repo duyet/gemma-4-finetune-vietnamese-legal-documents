@@ -33,34 +33,45 @@ def main(output: str, split: str):
     print(f"\nSource: th1nhng0/vietnamese-legal-documents")
     print(f"Output: {output_path}")
 
-    # Download documents config
+    # Download metadata and content configs
     if split in ["documents", "all"]:
-        print(f"\n[1/4] Downloading documents...")
+        print(f"\n[1/4] Downloading metadata and content...")
         try:
-            docs = load_dataset("th1nhng0/vietnamese-legal-documents", "documents", split="train")
-            print(f"✅ Loaded {len(docs)} documents")
+            # Download metadata
+            metadata = load_dataset("th1nhng0/vietnamese-legal-documents", "metadata", split="train")
+            print(f"✅ Loaded {len(metadata)} metadata records")
+
+            # Download content
+            content = load_dataset("th1nhng0/vietnamese-legal-documents", "content", split="train")
+            print(f"✅ Loaded {len(content)} content records")
+
+            # Merge metadata and content by document ID
+            content_dict = {item.get("doc_id", ""): item for item in content}
 
             # Convert to our format
             our_format = []
-            for doc in tqdm(docs, desc="Converting format"):
+            for meta in tqdm(metadata, desc="Merging metadata and content"):
+                doc_id = str(meta.get("doc_id", ""))
+                content_item = content_dict.get(doc_id, {})
+
                 our_doc = {
-                    "url": doc.get("url", ""),
-                    "doc_id": str(doc.get("id", "")),
-                    "title": doc.get("title", ""),
-                    "doc_number": doc.get("so_ky_hieu", ""),
-                    "doc_type": doc.get("loai_van_ban", ""),
-                    "issuing_authority": doc.get("co_quan_ban_hanh", ""),
-                    "issue_date": doc.get("ngay_ban_hanh", ""),
-                    "effective_date": doc.get("ngay_co_hieu_luc", ""),
-                    "status": doc.get("tinh_trang_hieu_luc", ""),
-                    "sector": doc.get("nganh", ""),
-                    "field": doc.get("linh_vuc", ""),
-                    "content_html": doc.get("content_html", ""),
+                    "url": meta.get("url", ""),
+                    "doc_id": doc_id,
+                    "title": meta.get("title", ""),
+                    "doc_number": meta.get("doc_number", ""),
+                    "doc_type": meta.get("doc_type", ""),
+                    "issuing_authority": meta.get("issuing_authority", ""),
+                    "issue_date": meta.get("issue_date", ""),
+                    "effective_date": meta.get("effective_date", ""),
+                    "status": meta.get("status", ""),
+                    "sector": meta.get("sector", ""),
+                    "field": meta.get("field", ""),
+                    "content_html": content_item.get("content_html", ""),
                     "content_text": "",
                     "content_markdown": "",
-                    "category": "",
-                    "sub_category": "",
-                    "tags": [],
+                    "category": meta.get("category", ""),
+                    "sub_category": meta.get("sub_category", ""),
+                    "tags": meta.get("tags", []),
                     "language": "vn",
                     "crawled_at": datetime.now().isoformat(),
                     "crawl_source": "huggingface:th1nhng0/vietnamese-legal-documents",
