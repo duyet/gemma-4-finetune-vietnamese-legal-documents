@@ -310,7 +310,7 @@ HF_REPO_NAME="your-repo-name"
 ## 📊 Dataset Details
 
 ### Source
-- **Primary**: [th1nh0/vietnamese-legal-documents](https://huggingface.co/datasets/th1nh0/vietnamese-legal-documents) (~150K docs from vbpl.vn)
+- **Primary**: [th1nhng0/vietnamese-legal-documents](https://huggingface.co/datasets/th1nhng0/vietnamese-legal-documents) (~150K docs from vbpl.vn)
 - **Additional**: Crawled from thuvienphapluat.vn (optional, via Playwright)
 
 ### Document Types
@@ -437,7 +437,7 @@ The compiled dataset and code are released under **CC BY 4.0**.
 
 ## 🙏 Acknowledgments
 
-- Base dataset: [th1nh0/vietnamese-legal-documents](https://huggingface.co/datasets/th1nh0/vietnamese-legal-documents)
+- Base dataset: [th1nhng0/vietnamese-legal-documents](https://huggingface.co/datasets/th1nhng0/vietnamese-legal-documents)
 - Source: [vbpl.vn](https://vbpl.vn) - Official Government Legal Document Portal
 - Additional source: [thuvienphapluat.vn](https://thuvienphapluat.vn)
 - Base model: [Google Gemma 4](https://blog.google/innovation-and-ai/technology/developers-tools/gemma/)
