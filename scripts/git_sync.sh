@@ -267,6 +267,7 @@ main() {
 
         push)
             local target="${1:-both}"
+            shift  # Remove target from arguments so remaining args can be passed to branch parameter
             case "$target" in
                 github)
                     push_github "$@"
