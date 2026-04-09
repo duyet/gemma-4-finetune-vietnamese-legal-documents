@@ -64,8 +64,8 @@ def main(output: str, split: str):
 
         # Build content lookup (id -> content_html)
         content_dict = dict(zip(
-            content_df["id"].cast(str).to_list(),
-            content_df["content_html"].to_list()
+            content_df["id"].astype(str).tolist(),
+            content_df["content_html"].tolist()
         ))
 
         # Merge: add content_html using pandas
