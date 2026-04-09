@@ -57,7 +57,7 @@ def main(output: str, split: str):
             content_df = pl.read_parquet(content_path)
             print(f"✅ Loaded content table with {len(content_df)} rows")
             print(f"   Sample fields: {content_df.columns[:10]}")
-            print(f"   Sample doc_id: {content_df[0, 'doc_id']}")
+            print(f"   Sample id: {content_df[0, 'id']}")
 
             # Build content dict using Polars
             print("📝 Building content lookup dictionary...")
@@ -78,13 +78,13 @@ def main(output: str, split: str):
 
             print(f"✅ Indexed {len(content_lookup)} content records")
 
-            # Convert to our format - NOTE: metadata uses 'id' field
+            # Convert to our format - NOTE: both metadata and content use 'id' field
             our_format = []
             docs_with_content = 0
             docs_without_content = 0
 
             for meta in tqdm(metadata, desc="Merging metadata and content"):
-                # Metadata uses 'id' field, content uses 'doc_id'
+                # Both metadata and content use 'id' field
                 meta_id = str(meta.get("id", ""))
                 content_html = content_lookup.get(meta_id, "")
 
