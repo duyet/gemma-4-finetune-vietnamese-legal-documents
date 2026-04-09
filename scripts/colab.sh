@@ -3,7 +3,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-NOTEBOOK_PATH="$PROJECT_ROOT/notebooks/Gemma4_Vietnamese_Legal_Train.ipynb"
+NOTEBOOK_PATH="$PROJECT_ROOT/notebooks/Train.ipynb"
 
 # Colors
 GREEN='\033[0;32m'
@@ -27,34 +27,30 @@ if [ ! -f "$NOTEBOOK_PATH" ]; then
     exit 1
 fi
 
-log_info "Notebook: Gemma4_Vietnamese_Legal_Train.ipynb"
+log_info "Notebook: Train.ipynb"
 log_info "Location: $NOTEBOOK_PATH"
 echo ""
 
-echo "This notebook includes:"
+echo "This notebook orchestrates scripts from the repository:"
 echo "  📦 Clone repository"
 echo "  🕷️ Crawl data (optional)"
-echo "  📊 Download/merge datasets"
-echo "  🤗 Upload to HuggingFace (optional)"
+echo "  📊 Download/prepare datasets"
 echo "  🎓 Fine-tune Gemma 4 E2B"
 echo "  📦 Export to GGUF"
-echo "  🚀 Upload model to HF (optional)"
 echo "  📈 Generate evaluation scores"
-echo "  🔄 Push results to GitHub (optional)"
 echo ""
 
-echo "Control all features via FLAGS in the first cell:"
+echo "All training logic lives in Python scripts."
+echo "Edit the configuration in the first cell:"
 echo ""
 echo "  CRAWL_ENABLED = False           # Enable crawling"
-echo "  CRAWL_PAGES = 100               # Pages to crawl"
 echo "  DOWNLOAD_HF_DATASET = True     # Download base dataset"
-echo "  UPLOAD_DATASET_TO_HF = False    # Upload dataset to HF"
 echo "  RUN_TRAINING = True             # Run fine-tuning"
 echo "  TRAINING_STAGE = 'pretrain'      # pretrain, sft, or both"
+echo "  MAX_SEQ_LENGTH = 4096"
+echo "  BATCH_SIZE = 2"
 echo "  EXPORT_TO_GGUF = True           # Export to GGUF"
-echo "  UPLOAD_MODEL_TO_HF = False      # Upload model to HF"
 echo "  GENERATE_SCORES = True          # Generate scores"
-echo "  PUSH_RESULTS_TO_GITHUB = False  # Push to GitHub"
 echo ""
 
 echo "=========================================="

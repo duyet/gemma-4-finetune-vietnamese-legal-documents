@@ -18,12 +18,19 @@ cd gemma-4-finetune-vietnamese-legal-documents
 ```
 
 **Then in Colab:**
-1. Upload `notebooks/Gemma4_Vietnamese_Legal_Train.ipynb`
+1. Upload `notebooks/Train.ipynb`
 2. Set flags in first cell (control what runs)
 3. Run all cells
 
 **Control flags:**
-- `CRAWL_ENABLED` - Enable/disable crawling
+- `CRAWL_ENABLED` - Enable/disable crawling (optional)
+- `DOWNLOAD_HF_DATASET` - Download base dataset
+- `RUN_TRAINING` - Run fine-tuning
+- `TRAINING_STAGE` - Training stage (pretrain, sft, both)
+- `MAX_SEQ_LENGTH` - Max sequence length
+- `BATCH_SIZE` - Training batch size
+- `EXPORT_TO_GGUF` - Export quantized model
+- `GENERATE_SCORES` - Generate evaluation scores
 - `DOWNLOAD_HF_DATASET` - Download base dataset
 - `RUN_TRAINING` - Run fine-tuning
 - `EXPORT_TO_GGUF` - Export quantized model
@@ -126,9 +133,10 @@ uv run python crawler/playwright_crawler.py --workers 4
 ### 4. Fine-tune on Colab (or Local)
 
 **On Colab (Recommended):**
-- Upload `notebooks/Gemma4_Vietnamese_Legal_Train.ipynb`
-- Set flags to control what runs
+- Upload `notebooks/Train.ipynb`
+- Set configuration flags in first cell
 - Run all cells
+- Notebook automatically clones latest code from GitHub
 
 **Locally:**
 - Use the scripts in `scripts/` directory
@@ -182,10 +190,8 @@ gemma-4-finetune-vietnamese-legal-documents/
 │   └── setup_hf_repos.sh
 │
 ├── notebooks/                # Training notebooks
-│   ├── Gemma4_Vietnamese_Legal_Train.ipynb  # Full pipeline (flag-controlled)
-│   ├── 01_pretrain.ipynb   # Stage 1 manual training
-│   └── 02_sft_rag.ipynb    # Stage 2 manual training
-│   └── README.md           # Notebook documentation
+│   ├── Train.ipynb          # Main Colab notebook (orchestrates scripts)
+│   └── README.md            # Notebook documentation
 │
 ├── rag/                      # RAG pipeline
 │   └── pipeline.py           # Complete RAG implementation
