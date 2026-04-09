@@ -18,7 +18,7 @@ cd gemma-4-finetune-vietnamese-legal-documents
 ```
 
 **Then in Colab:**
-1. Upload `notebooks/Train.ipynb`
+1. Upload `notebooks/Gemma4_Vietnamese_Legal_Finetune.ipynb`
 2. Set flags in first cell (control what runs)
 3. Run all cells
 
@@ -133,7 +133,7 @@ uv run python crawler/playwright_crawler.py --workers 4
 ### 4. Fine-tune on Colab (or Local)
 
 **On Colab (Recommended):**
-- Upload `notebooks/Train.ipynb`
+- Upload `notebooks/Gemma4_Vietnamese_Legal_Finetune.ipynb`
 - Set configuration flags in first cell
 - Run all cells
 - Notebook automatically clones latest code from GitHub
@@ -190,7 +190,7 @@ gemma-4-finetune-vietnamese-legal-documents/
 │   └── setup_hf_repos.sh
 │
 ├── notebooks/                # Training notebooks
-│   ├── Train.ipynb          # Main Colab notebook (orchestrates scripts)
+│   ├── Gemma4_Vietnamese_Legal_Finetune.ipynb  # Main Colab notebook
 │   └── README.md            # Notebook documentation
 │
 ├── rag/                      # RAG pipeline

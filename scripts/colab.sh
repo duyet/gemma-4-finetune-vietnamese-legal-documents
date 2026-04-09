@@ -3,7 +3,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-NOTEBOOK_PATH="$PROJECT_ROOT/notebooks/Train.ipynb"
+NOTEBOOK_PATH="$PROJECT_ROOT/notebooks/Gemma4_Vietnamese_Legal_Finetune.ipynb"
 
 # Colors
 GREEN='\033[0;32m'
@@ -27,7 +27,7 @@ if [ ! -f "$NOTEBOOK_PATH" ]; then
     exit 1
 fi
 
-log_info "Notebook: Train.ipynb"
+log_info "Notebook: Gemma4_Vietnamese_Legal_Finetune.ipynb"
 log_info "Location: $NOTEBOOK_PATH"
 echo ""
 
