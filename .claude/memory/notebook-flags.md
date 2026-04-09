@@ -19,8 +19,38 @@ GITHUB_USERNAME = "duyet"
 HF_USERNAME = "duyet"
 HF_DATASET_NAME = "vietnamese-legal-documents"
 HF_MODEL_NAME = "gemma-4-vietnamese-legal-rag"
-HF_TOKEN = ""  # Optional: Set token here or in Colab secrets
+HF_TOKEN = ""  # Optional: Set token here or use Colab secrets (see below)
 ```
+
+**🔑 HuggingFace Token Setup** (Required for uploading to HF)
+
+You need a Write token to upload datasets and models. Three options:
+
+**Option A: Colab Secrets (Recommended)**
+1. In Colab, click �钥匙 icon in left sidebar
+2. Add new secret: Name = `HF_TOKEN`, Value = your token
+3. Toggle "Notebook access" → ON
+4. Leave `HF_TOKEN = ""` in notebook code
+
+**Option B: Set in Notebook**
+```python
+HF_TOKEN = "hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # Paste your token here
+```
+
+**Option C: CLI Login in Notebook**
+```python
+# Notebook will call this automatically if HF_TOKEN is empty
+!huggingface-cli login --token $HF_TOKEN
+```
+
+**How to Get Your Token:**
+1. Go to: https://huggingface.co/settings/tokens
+2. Click "New token"
+3. Name: `gemma4-vietnamese-legal`
+4. Type: **Write** (⚠️ Required for uploading)
+5. Copy token (shown only once!)
+
+See [docs/HF_SETUP.md](../../docs/HF_SETUP.md) for complete guide.
 
 ### Crawling Flags
 ```python

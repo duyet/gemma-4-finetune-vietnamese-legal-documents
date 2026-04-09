@@ -7,6 +7,135 @@ This guide walks you through setting up HuggingFace for the Gemma 4 Vietnamese L
 1. A HuggingFace account (free at https://huggingface.co/join)
 2. Your HuggingFace username
 
+## HuggingFace Token Setup
+
+### Why You Need a Token
+
+A HuggingFace access token is required for:
+- **Creating repositories** (dataset + model)
+- **Uploading datasets** (large files)
+- **Uploading models** (GGUF files, LoRA adapters)
+- **Using gated models** (if applicable)
+
+### Token Permissions Guide
+
+**Recommended Token Type: `Write`**
+
+For all actions in this repository, you need a token with **Write** permissions.
+
+| Permission | What It Allows | Required For |
+|------------|----------------|--------------|
+| **Read** | Download public models/datasets | - Downloading base HF dataset |
+| **Write** | Upload + create repos | ✅ Creating dataset/model repos<br>✅ Uploading processed data<br>✅ Uploading trained models |
+| **Admin** | Delete + settings | Optional (not required) |
+
+### How to Create Your Token
+
+#### Step 1: Go to Token Settings
+
+Visit: https://huggingface.co/settings/tokens
+
+#### Step 2: Create New Token
+
+1. Click **"New token"** button
+2. Fill in the form:
+   - **Name**: `gemma4-vietnamese-legal` (or any descriptive name)
+   - **Token type**: Select **"Write"** (⚠️ **Required** for this project)
+   - **Repositories** (optional): Leave blank for all repos, or specify:
+     - `duyet/vietnamese-legal-documents` (dataset)
+     - `duyet/gemma-4-vietnamese-legal-rag` (model)
+3. Click **"Generate token"**
+
+#### Step 3: Copy Your Token
+
+**⚠️ IMPORTANT**: Copy the token immediately — it's shown only once!
+
+The token will look like:
+```
+hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+### Where to Set Your Token
+
+#### Option A: CLI Login (Recommended)
+
+```bash
+# Login interactively
+huggingface-cli login
+
+# Paste your token when prompted
+# Token: hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+Or with token directly:
+```bash
+huggingface-cli login --token hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+#### Option B: Environment Variable
+
+Add to `.env` file:
+```bash
+HF_TOKEN=hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+Then in Python:
+```python
+from huggingface_hub import login
+login(os.getenv("HF_TOKEN"))
+```
+
+#### Option C: Colab Secrets
+
+For Google Colab:
+1. Open notebook in Colab
+2. Click �钥匙 (key) icon in left sidebar
+3. Add new secret:
+   - **Name**: `HF_TOKEN`
+   - **Value**: `hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+4. Toggle: "Notebook access" → ON
+
+### Verify Your Token
+
+```bash
+# Check who you're logged in as
+huggingface-cli whoami
+
+# Expected output:
+# duyet
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Current card:
+# ⚠ NOT STARTED (threshold: 500k points)
+```
+
+### Token Security Best Practices
+
+✅ **DO:**
+- Keep token private (never commit to git)
+- Use environment variables or secrets managers
+- Create separate tokens for different projects
+- Rotate tokens periodically (every 90 days)
+
+❌ **DON'T:**
+- Share tokens publicly (Discord, GitHub, forums)
+- Commit tokens to version control
+- Use admin tokens unless absolutely necessary
+- Reuse the same token everywhere
+
+### Troubleshooting Token Issues
+
+**"401 Unauthorized" or "Invalid token"**
+→ Token is incorrect or expired. Generate a new token.
+
+**"403 Forbidden - insufficient permissions"**
+→ Token doesn't have Write permissions. Create a new Write token.
+
+**"Repository not found" but you just created it**
+→ Token may be cached. Run `huggingface-cli logout` then login again.
+
+**"Access to model <model-name> is restricted"**
+→ Model is gated. Accept the model's license on HuggingFace first.
+
 ## Step 1: Install HuggingFace CLI
 
 ```bash
