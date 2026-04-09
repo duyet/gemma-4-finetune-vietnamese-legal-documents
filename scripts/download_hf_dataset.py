@@ -55,8 +55,9 @@ def main(output: str, split: str):
 
         print(f"\n[3/3] Merging and saving (defer text extraction)...")
 
-        # Create metadata DataFrame
-        meta_df = pl.DataFrame(metadata)
+        # Convert HuggingFace dataset to list of dicts, then to Polars DataFrame
+        meta_list = metadata.to_list()
+        meta_df = pl.DataFrame(meta_list)
 
         # Build content lookup (id -> content_html)
         content_dict = dict(zip(
