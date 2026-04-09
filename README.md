@@ -182,7 +182,10 @@ gemma-4-finetune-vietnamese-legal-documents/
 │   └── setup_hf_repos.sh
 │
 ├── notebooks/                # Training notebooks
-│   └── Auto_Train.ipynb      # Auto-training (git clone)
+│   ├── Gemma4_Vietnamese_Legal_Train.ipynb  # Full pipeline (flag-controlled)
+│   ├── 01_pretrain.ipynb   # Stage 1 manual training
+│   └── 02_sft_rag.ipynb    # Stage 2 manual training
+│   └── README.md           # Notebook documentation
 │
 ├── rag/                      # RAG pipeline
 │   └── pipeline.py           # Complete RAG implementation
