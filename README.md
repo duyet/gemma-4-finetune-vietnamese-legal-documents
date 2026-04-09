@@ -37,6 +37,8 @@ nano .env  # or your preferred editor
 - `CRAWLER_MAX_PAGES` - Maximum pages to crawl
 - `BASE_MODEL` - Base model for fine-tuning
 
+> **📖 See [docs/HF_SETUP.md](docs/HF_SETUP.md) for complete HuggingFace setup guide**
+
 ### 3. Prepare Dataset
 
 **Option A: Use existing HF dataset (fastest)**
