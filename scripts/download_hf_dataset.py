@@ -15,8 +15,8 @@ from datetime import datetime
 
 import click
 from datasets import load_dataset
-import pandas as pd
 from tqdm import tqdm
+import polars as pl
 
 
 @click.command()
@@ -42,40 +42,36 @@ def main(output: str, split: str):
             print(f"✅ Loaded {len(metadata)} metadata records")
             print(f"   Sample fields: {list(metadata[0].keys())[:10]}")
 
-            # Download content - read parquet directly to avoid ArrowInvalid error
-            print(f"📥 Loading content (reading parquet directly)...")
-            from huggingface_hub import hf_hub_download
-            import pyarrow.parquet as pq
+            # Download content - use HuggingFace native Polars format
+            print(f"📥 Loading content with Polars (via HuggingFace)...")
+            content = load_dataset(
+                "th1nhng0/vietnamese-legal-documents",
+                "content",
+                split="data",
+                format="polars"  # Native Polars support!
+            )
+            print(f"✅ Loaded content table with {len(content)} rows")
+            print(f"   Sample fields: {content.columns[:10]}")
+            print(f"   Sample doc_id: {content[0, 'doc_id']}")
 
-            # Download content.parquet to temp location
-            content_path = hf_hub_download(
-                repo_id="th1nhng0/vietnamese-legal-documents",
-                filename="data/content.parquet",
-                repo_type="dataset",
+            # Build content dict using Polars operations
+            print("📝 Building content lookup dictionary...")
+            content_df = (
+                content
+                .filter(pl.col("doc_id").is_not_null())
+                .select([
+                    pl.col("doc_id").cast(str),
+                    pl.col("content_html")
+                ])
             )
 
-            # Read with pyarrow (handles large_string dtype)
-            table = pq.read_table(content_path)
-            print(f"✅ Loaded content table with {len(table)} rows")
-            print(f"   Sample fields: {table.column_names[:10]}")
+            # Create lookup dict
+            content_lookup = dict(zip(
+                content_df["doc_id"].to_list(),
+                content_df["content_html"].to_list()
+            ))
 
-            # Build content dict - NOTE: content uses 'doc_id' field
-            print("📝 Building content lookup dictionary...")
-            content_dict = {}
-            doc_id_col = table.column("doc_id").to_pylist()
-            content_html_col = table.column("content_html").to_pylist()
-
-            for doc_id, content_html in tqdm(zip(doc_id_col, content_html_col), total=len(doc_id_col), desc="Indexing content"):
-                if doc_id:
-                    content_dict[str(doc_id)] = {
-                        "doc_id": str(doc_id),
-                        "content_html": content_html or "",
-                    }
-
-            print(f"✅ Indexed {len(content_dict)} content records")
-            if content_dict:
-                sample_id = list(content_dict.keys())[0]
-                print(f"   Sample doc_id: {sample_id}")
+            print(f"✅ Indexed {len(content_lookup)} content records")
 
             # Convert to our format - NOTE: metadata uses 'id' field
             our_format = []
@@ -85,7 +81,7 @@ def main(output: str, split: str):
             for meta in tqdm(metadata, desc="Merging metadata and content"):
                 # Metadata uses 'id' field, content uses 'doc_id'
                 meta_id = str(meta.get("id", ""))
-                content_item = content_dict.get(meta_id, {})
+                content_html = content_lookup.get(meta_id, "")
 
                 our_doc = {
                     "url": meta.get("url", ""),
@@ -93,13 +89,13 @@ def main(output: str, split: str):
                     "title": meta.get("title", ""),
                     "doc_number": meta.get("so_ky_hieu", ""),  # Vietnamese field name
                     "doc_type": meta.get("loai_van_ban", ""),  # Vietnamese field name
-                    "issuing_authority": meta.get("co_quan_ban_hanh", ""),  # Will be added
+                    "issuing_authority": "",  # Not in metadata
                     "issue_date": meta.get("ngay_ban_hanh", ""),  # Vietnamese field name
                     "effective_date": meta.get("ngay_co_hieu_luc", ""),  # Vietnamese field name
                     "status": "",  # Will derive from dates
                     "sector": meta.get("nganh", ""),  # Vietnamese field name
                     "field": "",  # Not in metadata
-                    "content_html": content_item.get("content_html", ""),
+                    "content_html": content_html,
                     "content_text": "",
                     "content_markdown": "",
                     "category": "",
@@ -107,7 +103,7 @@ def main(output: str, split: str):
                     "tags": [],
                     "language": "vn",
                     "crawled_at": datetime.now().isoformat(),
-                    "crawl_source": "huggingface:th1nhng0/vietnamese-legal-documents",
+                    "crawl_source": "huggingface:th1nh0/vietnamese-legal-documents",
                 }
 
                 # Extract text from HTML
@@ -128,9 +124,9 @@ def main(output: str, split: str):
             print(f"   Documents with content: {docs_with_content:,}")
             print(f"   Documents without content: {docs_without_content:,}")
 
-            # Save as Parquet
-            df = pd.DataFrame(our_format)
-            df.to_parquet(output_path / "documents.parquet", index=False)
+            # Save as Parquet using Polars
+            df = pl.DataFrame(our_format)
+            df.write_parquet(output_path / "documents.parquet")
             print(f"✅ Saved {len(our_format)} documents to {output_path / 'documents.parquet'}")
 
         except Exception as e:
@@ -142,12 +138,7 @@ def main(output: str, split: str):
         try:
             rels = load_dataset("th1nhng0/vietnamese-legal-documents", "relationships", split="data")
             print(f"✅ Loaded {len(rels)} relationships")
-            print(f"⚠️  Skipping relationships save - not needed for training")
-
-            # Save as Parquet
-            df_rels = pd.DataFrame(rels)
-            df_rels.to_parquet(output_path / "relationships.parquet", index=False)
-            print(f"✅ Saved relationships to {output_path / 'relationships.parquet'}")
+            print(f"ℹ️  Skipping relationships save - not needed for training")
 
         except Exception as e:
             print(f"⚠️  Error downloading relationships: {e}")
@@ -160,12 +151,12 @@ def main(output: str, split: str):
         if not docs_file.exists():
             print("⚠️  Documents not found, skipping passages")
         else:
-            df = pd.read_parquet(docs_file)
+            df = pl.read_parquet(docs_file)
 
             passages = []
             passage_id = 0
 
-            for _, doc in tqdm(df.iterrows(), total=len(df), desc="Extracting passages"):
+            for doc in tqdm(df.iter_rows(named=True), total=len(df), desc="Extracting passages"):
                 content = doc.get("content_markdown") or doc.get("content_text", "")
                 if not content:
                     continue
@@ -203,8 +194,8 @@ def main(output: str, split: str):
                         "title": doc.get("title", ""),
                     })
 
-            df_passages = pd.DataFrame(passages)
-            df_passages.to_parquet(output_path / "passages.parquet", index=False)
+            df_passages = pl.DataFrame(passages)
+            df_passages.write_parquet(output_path / "passages.parquet")
             print(f"✅ Created {len(passages)} passages")
 
     # Build pretrain corpus
@@ -215,11 +206,11 @@ def main(output: str, split: str):
         if not docs_file.exists():
             print("⚠️  Documents not found, skipping corpus")
         else:
-            df = pd.read_parquet(docs_file)
+            df = pl.read_parquet(docs_file)
 
             corpus_file = output_path / "corpus.txt"
             with open(corpus_file, "w", encoding="utf-8") as f:
-                for _, doc in tqdm(df.iterrows(), total=len(df), desc="Building corpus"):
+                for doc in tqdm(df.iter_rows(named=True), total=len(df), desc="Building corpus"):
                     content = doc.get("content_markdown") or doc.get("content_text", "")
                     if content:
                         title = doc.get("title", "")
