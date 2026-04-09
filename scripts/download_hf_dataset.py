@@ -16,6 +16,7 @@ from datetime import datetime
 import click
 from datasets import load_dataset
 from tqdm import tqdm
+import pandas as pd
 import polars as pl
 
 
@@ -55,9 +56,9 @@ def main(output: str, split: str):
 
         print(f"\n[3/3] Merging and saving (defer text extraction)...")
 
-        # Convert HuggingFace dataset to list of dicts, then to Polars DataFrame
-        meta_list = metadata.to_list()
-        meta_df = pl.DataFrame(meta_list)
+        # Use pandas for robust merge (handles heterogeneous data better)
+        print("📝 Converting to pandas...")
+        meta_pd = metadata.to_pandas()
 
         # Build content lookup (id -> content_html)
         content_dict = dict(zip(
@@ -65,30 +66,25 @@ def main(output: str, split: str):
             content_df["content_html"].to_list()
         ))
 
-        # Merge: add content_html to metadata using vectorized operations
+        # Merge: add content_html using pandas
         print("📝 Merging content with metadata...")
-        result_df = meta_df.with_columns([
-            pl.col("id").map_dict(lambda x: content_dict.get(str(x), "")).alias("content_html"),
-        ])
+        meta_pd["content_html"] = meta_pd["id"].astype(str).map(content_dict)
 
         # Add missing fields for our format
-        result_df = result_df.with_columns([
-            pl.lit("").alias("doc_id"),
-            pl.lit("").alias("issuing_authority"),
-            pl.lit("").alias("status"),
-            pl.lit("").alias("field"),
-            pl.lit("").alias("content_text"),
-            pl.lit("").alias("content_markdown"),
-            pl.lit("").alias("category"),
-            pl.lit("").alias("sub_category"),
-            pl.lit([]).alias("tags"),
-            pl.lit("vn").alias("language"),
-            pl.lit(datetime.now().isoformat()).alias("crawled_at"),
-            pl.lit("huggingface:th1nhng0/vietnamese-legal-documents").alias("crawl_source"),
-        ])
+        meta_pd["issuing_authority"] = ""
+        meta_pd["status"] = ""
+        meta_pd["field"] = ""
+        meta_pd["content_text"] = ""
+        meta_pd["content_markdown"] = ""
+        meta_pd["category"] = ""
+        meta_pd["sub_category"] = ""
+        meta_pd["tags"] = [[] for _ in range(len(meta_pd))]
+        meta_pd["language"] = "vn"
+        meta_pd["crawled_at"] = datetime.now().isoformat()
+        meta_pd["crawl_source"] = "huggingface:th1nhng0/vietnamese-legal-documents"
 
         # Rename Vietnamese fields to our schema
-        result_df = result_df.rename({
+        meta_pd = meta_pd.rename(columns={
             "id": "doc_id",
             "so_ky_hieu": "doc_number",
             "loai_van_ban": "doc_type",
@@ -98,12 +94,16 @@ def main(output: str, split: str):
         })
 
         # Reorder columns to match expected schema
-        result_df = result_df.select([
+        result_pd = meta_pd[[
             "url", "doc_id", "title", "doc_number", "doc_type",
             "issuing_authority", "issue_date", "effective_date", "status",
             "sector", "field", "content_html", "content_text", "content_markdown",
             "category", "sub_category", "tags", "language", "crawled_at", "crawl_source"
-        ])
+        ]]
+
+        # Convert to Polars for fast Parquet write
+        print("📝 Converting to Polars for save...")
+        result_df = pl.from_pandas(result_pd)
 
         # Save immediately - NO HTML PARSING
         result_df.write_parquet(output_path / "documents.parquet")
