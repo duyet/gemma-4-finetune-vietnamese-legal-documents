@@ -136,14 +136,27 @@ def load_training_data(data_dir: str) -> Dataset:
     content_df = content_table.to_pandas()
     print(f"   ✅ Loaded {len(content_df)} content records")
 
-    # Merge
+    # Merge using pandas merge (much faster than map)
     print("   📝 Merging metadata and content...")
     meta_pd = metadata.to_pandas()
-    content_dict = dict(zip(
-        content_df["id"].astype(str).tolist(),
-        content_df["content_html"].tolist()
-    ))
-    meta_pd["content_html"] = meta_pd["id"].astype(str).map(content_dict)
+
+    # Prepare content dataframe for merge
+    content_for_merge = content_df[["id", "content_html"]].copy()
+    content_for_merge["id"] = content_for_merge["id"].astype(str)
+
+    # Merge on id
+    meta_pd["id"] = meta_pd["id"].astype(str)
+    meta_pd = meta_pd.merge(
+        content_for_merge,
+        on="id",
+        how="left",
+        suffixes=("", "_content")
+    )
+
+    # Keep the merged content_html
+    if "content_html_content" in meta_pd.columns:
+        meta_pd["content_html"] = meta_pd["content_html_content"]
+        meta_pd = meta_pd.drop(columns=["content_html_content"])
 
     # Convert to Dataset
     dataset = Dataset.from_pandas(meta_pd)
