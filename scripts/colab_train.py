@@ -135,12 +135,36 @@ def build_pretrain_corpus(dataset: Dataset) -> Dataset:
 
     corpus_text = []
     for doc in dataset:
-        content = doc.get('content_html') or doc.get('content_text', '')
-        if content and len(content) > 100:  # Skip very short documents
-            title = doc.get('title', '')
-            doc_number = doc.get('so_ky_hieu', '') or doc.get('doc_number', '')
-            header = f"{doc_number} - {title}".strip(" -")
-            corpus_text.append(f"<bos>{header}\n\n{content}<eos>")
+        # Try multiple content sources
+        content = (
+            doc.get('content_html') or
+            doc.get('content_text', '') or
+            doc.get('content_markdown', '')
+        )
+
+        # If no content, build from metadata fields
+        if not content or len(content) < 10:
+            # Build simple training text from metadata
+            parts = []
+            if doc.get('title'):
+                parts.append(f"Title: {doc['title']}")
+            if doc.get('so_ky_hieu'):
+                parts.append(f"Số ký hiệu: {doc['so_ky_hieu']}")
+            if doc.get('loai_van_ban'):
+                parts.append(f"Loại văn bản: {doc['loai_van_ban']}")
+            if doc.get('ngay_ban_hanh'):
+                parts.append(f"Ngày ban hành: {doc['ngay_ban_hanh']}")
+            if doc.get('ngay_co_hieu_luc'):
+                parts.append(f"Ngày có hiệu lực: {doc['ngay_co_hieu_luc']}")
+            if doc.get('co_quan_ban_hanh'):
+                parts.append(f"Cơ quan ban hành: {doc['co_quan_ban_hanh']}")
+            if doc.get('linh_vuc'):
+                parts.append(f"Lĩnh vực: {doc['linh_vuc']}")
+
+            content = ". ".join(parts) if parts else doc.get('title', '')
+
+        if content and len(content) > 20:  # Skip very short entries
+            corpus_text.append(f"<bos>{content}<eos>")
 
     print(f"✅ Built corpus with {len(corpus_text):,} documents")
 
