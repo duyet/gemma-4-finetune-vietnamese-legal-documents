@@ -1,11 +1,32 @@
 #!/bin/bash
-# TVPL Git Automation Script
+# Git Automation Script for Gemma 4 Vietnamese Legal Documents
 # Commit and push changes with semantic commits
+# Supports dual-sync: GitHub + HuggingFace
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Load .env file if it exists
+load_env() {
+    local env_file="$PROJECT_ROOT/.env"
+    if [ -f "$env_file" ]; then
+        log_info "Loading environment from $env_file"
+        set -a
+        source "$env_file"
+        set +a
+    else
+        log_warn ".env file not found. Using defaults or environment variables."
+    fi
+}
+
+# Load environment variables
+load_env
+
+# Repository configuration (can be overridden by .env)
+GITHUB_REPO="${GITHUB_REPO:-git@github.com:duyet/gemma-4-finetune-vietnamese-legal-documents.git}"
+HF_REPO="${HF_USERNAME:-duyet}/${HF_REPO_NAME:-gemma-4-finetune-vietnamese-legal-documents}"
 
 # Colors
 RED='\033[0;31m'
@@ -74,35 +95,102 @@ commit_changes() {
     log_info "✅ Committed: $commit_msg"
 }
 
-# Push to remote
-push_changes() {
+# Setup remotes (GitHub + HuggingFace)
+setup_remotes() {
+    log_info "Setting up dual remotes (GitHub + HuggingFace)..."
+
+    # GitHub remote (origin)
+    if git remote get-url origin &>/dev/null; then
+        log_info "✅ GitHub remote (origin) already configured"
+    else
+        log_info "Adding GitHub remote..."
+        git remote add origin "$GITHUB_REPO"
+        log_info "✅ Added GitHub remote"
+    fi
+
+    # HuggingFace remote (hf)
+    if git remote get-url hf &>/dev/null; then
+        log_info "✅ HuggingFace remote (hf) already configured"
+    else
+        log_info "Adding HuggingFace remote..."
+        git remote add hf "https://huggingface.co/$HF_REPO"
+        log_info "✅ Added HuggingFace remote"
+    fi
+
+    log_info "Current remotes:"
+    git remote -v
+}
+
+# Push to GitHub
+push_github() {
     local branch="${1:-$(git rev-parse --abbrev-ref HEAD)}"
 
-    # Check if remote exists
     if ! git rev-parse --verify "origin/$branch" > /dev/null 2>&1; then
-        log_warn "Remote branch 'origin/$branch' does not exist"
-        log_info "Setting upstream and pushing..."
+        log_warn "GitHub branch 'origin/$branch' does not exist"
+        log_info "Setting upstream and pushing to GitHub..."
         git push -u origin "$branch"
     else
         log_cmd "git push origin $branch"
         git push origin "$branch"
     fi
 
-    log_info "✅ Pushed to origin/$branch"
+    log_info "✅ Pushed to GitHub (origin/$branch)"
+}
+
+# Push to HuggingFace
+push_huggingface() {
+    local branch="${1:-$(git rev-parse --abbrev-ref HEAD)}"
+
+    # Check if HF remote exists
+    if ! git remote get-url hf &>/dev/null; then
+        log_warn "HuggingFace remote not configured. Run: $0 setup"
+        return 1
+    fi
+
+    if ! git rev-parse --verify "hf/$branch" > /dev/null 2>&1; then
+        log_warn "HuggingFace branch 'hf/$branch' does not exist"
+        log_info "Setting upstream and pushing to HuggingFace..."
+        git push -u hf "$branch"
+    else
+        log_cmd "git push hf $branch"
+        git push hf "$branch"
+    fi
+
+    log_info "✅ Pushed to HuggingFace (hf/$branch)"
+}
+
+# Push to both GitHub and HuggingFace
+push_dual() {
+    local branch="${1:-$(git rev-parse --abbrev-ref HEAD)}"
+
+    log_info "🔄 Pushing to both GitHub and HuggingFace..."
+
+    push_github "$branch"
+    push_huggingface "$branch"
+
+    log_info "✅ Dual-sync complete!"
+}
+
+# Push to remote (legacy compatibility)
+push_changes() {
+    push_dual "$@"
 }
 
 # Show usage
 usage() {
     cat << EOF
-TVPL Git Automation
+Git Automation for Gemma 4 Vietnamese Legal Documents
 
 Usage: $(basename "$0") [COMMAND] [OPTIONS]
 
 Commands:
+    setup                    Setup dual remotes (GitHub + HF)
     commit                   Commit all changes
     commit [scope] msg       Commit with semantic message
-    push                     Push to remote
-    sync                     Commit and push
+    push                     Push to both GitHub and HF
+    push github              Push to GitHub only
+    push hf                  Push to HuggingFace only
+    sync                     Commit and push to both
     status                   Show git status
     diff                     Show changes
 
@@ -116,17 +204,26 @@ Commit Scopes:
     fix                      Bug fix
 
 Examples:
-    # Quick commit and push
+    # Setup remotes first
+    $(basename "$0") setup
+
+    # Quick commit and push to both
     $(basename "$0") sync
 
     # Commit with scope
     $(basename "$0") commit crawler "Add parallel crawling support"
 
-    # Push only
-    $(basename "$0") push
+    # Push to GitHub only
+    $(basename "$0") push github
+
+    # Push to HuggingFace only
+    $(basename "$0") push hf
 
     # Show status
     $(basename "$0") status
+
+Environment Variables:
+    HF_USERNAME              Your HuggingFace username (default: duyet)
 EOF
 }
 
@@ -139,6 +236,10 @@ main() {
     shift || true
 
     case "$command" in
+        setup)
+            setup_remotes
+            ;;
+
         commit)
             local scope="$1"
             local message="$2"
@@ -153,13 +254,29 @@ main() {
             ;;
 
         push)
-            push_changes "$@"
+            local target="${1:-both}"
+            case "$target" in
+                github)
+                    push_github "$@"
+                    ;;
+                hf|huggingface)
+                    push_huggingface "$@"
+                    ;;
+                both|"")
+                    push_dual "$@"
+                    ;;
+                *)
+                    log_error "Unknown push target: $target"
+                    echo "Use: github, hf, or both"
+                    exit 1
+                    ;;
+            esac
             ;;
 
         sync)
             stage_files
-            commit_changes "chore" "Update project files"
-            push_changes
+            commit_changes "chore" "Auto-sync"
+            push_dual
             ;;
 
         status)
@@ -173,35 +290,47 @@ main() {
         "")
             # Interactive mode
             echo "Choose an action:"
-            echo "  1) Commit (with scope and message)"
-            echo "  2) Quick commit (default: chore)"
-            echo "  3) Push"
-            echo "  4) Sync (commit + push)"
-            echo "  5) Status"
+            echo "  1) Setup remotes (GitHub + HF)"
+            echo "  2) Commit (with scope and message)"
+            echo "  3) Quick commit (default: chore)"
+            echo "  4) Push to both"
+            echo "  5) Push to GitHub only"
+            echo "  6) Push to HuggingFace only"
+            echo "  7) Sync (commit + push to both)"
+            echo "  8) Status"
             echo ""
-            read -p "Choice [1-5]: " choice
+            read -p "Choice [1-8]: " choice
 
             case $choice in
                 1)
+                    setup_remotes
+                    ;;
+                2)
                     read -p "Scope: " scope
                     read -p "Message: " msg
                     stage_files
                     commit_changes "$scope" "$msg"
                     ;;
-                2)
+                3)
                     read -p "Message: " msg
                     stage_files
                     commit_changes "chore" "$msg"
                     ;;
-                3)
-                    push_changes
-                    ;;
                 4)
-                    stage_files
-                    commit_changes "chore" "Auto-sync"
-                    push_changes
+                    push_dual
                     ;;
                 5)
+                    push_github
+                    ;;
+                6)
+                    push_huggingface
+                    ;;
+                7)
+                    stage_files
+                    commit_changes "chore" "Auto-sync"
+                    push_dual
+                    ;;
+                8)
                     git status
                     ;;
                 *)
