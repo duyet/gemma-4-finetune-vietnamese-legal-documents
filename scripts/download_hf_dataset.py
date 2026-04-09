@@ -41,41 +41,21 @@ def main(output: str, split: str):
             metadata = load_dataset("th1nhng0/vietnamese-legal-documents", "metadata", split="data")
             print(f"✅ Loaded {len(metadata)} metadata records")
 
-            # Download content - handle large_string dtype by downloading parquet directly
-            print(f"📥 Loading content (handling large_string dtype)...")
-            from huggingface_hub import hf_hub_download
+            # Download content - standard approach works fine
+            print(f"📥 Loading content...")
+            content = load_dataset("th1nhng0/vietnamese-legal-documents", "content", split="data")
+            print(f"✅ Loaded {len(content)} content records")
 
-            # Download content.parquet directly to avoid Arrow casting issues
-            cache_dir = output_path / ".cache"
-            cache_dir.mkdir(parents=True, exist_ok=True)
-
-            content_path = hf_hub_download(
-                repo_id="th1nhng0/vietnamese-legal-documents",
-                filename="data/content.parquet",
-                repo_type="dataset",
-                local_dir=output_path,
-                local_dir_use_symlinks=False
-            )
-            print(f"✅ Downloaded content.parquet")
-
-            # Read with pyarrow using large_string support
-            import pyarrow.parquet as pq
-            import pyarrow as pa
-
-            print("📝 Reading content with proper dtype handling...")
-            table = pq.read_table(content_path)
-            print(f"✅ Loaded content table with {len(table)} rows")
-
-            # Build content dict
+            # Convert to pandas and build dict
             print("📝 Building content lookup dictionary...")
+            content_df = content.to_pandas()
             content_dict = {}
-            for i in tqdm(range(len(table)), desc="Indexing content"):
-                row = table.slice(i, 1).to_pydict()
-                doc_id = row.get("doc_id", [None])[0]
+            for _, row in tqdm(content_df.iterrows(), total=len(content_df), desc="Indexing content"):
+                doc_id = str(row.get("doc_id", ""))
                 if doc_id:
-                    content_dict[str(doc_id)] = {
-                        "doc_id": str(doc_id),
-                        "content_html": row.get("content_html", [""])[0],
+                    content_dict[doc_id] = {
+                        "doc_id": doc_id,
+                        "content_html": row.get("content_html", ""),
                     }
 
             print(f"✅ Indexed {len(content_dict)} content records")
