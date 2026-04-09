@@ -46,9 +46,62 @@ def main(input: str, output: str, include_meta: bool, format: str):
 
     print(f"Processing {len(df)} documents")
 
+    # Check if we need to extract text from HTML
+    needs_extraction = df["content_text"].apply(lambda x: x == "").all() and "content_html" in df.columns
+
+    if needs_extraction:
+        print("⚡  Extracting text from HTML (one-time operation)...")
+        from lxml import html as lxml_html
+
+        def extract_text_fast(html_content):
+            """Fast text extraction using lxml."""
+            if not html_content or not html_content.strip():
+                return ""
+            try:
+                doc_tree = lxml_html.fromstring(html_content)
+                # Remove script, style, and noscript elements
+                for element in doc_tree.xpath('//script|//style|//noscript'):
+                    element.getparent().remove(element)
+                # Get clean text
+                text = doc_tree.text_content(separator="\n", strip=True)
+                # Clean up excessive whitespace
+                return "\n".join(line.strip() for line in text.split("\n") if line.strip())
+            except Exception:
+                return ""
+
+        # Extract text in batch (only rows with HTML content)
+        html_df = df.filter(pl.col("content_html").str.len_bytes() > 0)
+        if len(html_df) > 0:
+            extracted_text = html_df["content_html"].map_elements(extract_text_fast)
+            df = df.with_columns(
+                pl.when(pl.col("content_html").str.len_bytes() > 0)
+                .then(extracted_text)
+                .otherwise(pl.col("content_text"))
+                .alias("content_text_new")
+            )
+            df = df.drop("content_text").rename({"content_text_new": "content_text"})
+            print(f"✅ Extracted text for {len(html_df)} documents")
+
     with open(output_path, "w", encoding="utf-8") as f:
         for doc in tqdm(df.iter_rows(named=True), total=len(df)):
-            content = doc.get("content_markdown") or doc.get("content_text", "")
+            # Try multiple content sources in order of preference
+            content = (
+                doc.get("content_text", "") or
+                doc.get("content_markdown", "") or
+                doc.get("content_html", "")
+            )
+
+            # Extract from HTML if needed
+            if not content and doc.get("content_html"):
+                from lxml import html as lxml_html
+                try:
+                    doc_tree = lxml_html.fromstring(doc["content_html"])
+                    for element in doc_tree.xpath('//script|//style|//noscript'):
+                        element.getparent().remove(element)
+                    content = doc_tree.text_content(separator="\n", strip=True)
+                except Exception:
+                    continue
+
             if not content:
                 continue
 
