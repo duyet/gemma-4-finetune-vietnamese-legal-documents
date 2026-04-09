@@ -42,54 +42,69 @@ def main(output: str, split: str):
             print(f"✅ Loaded {len(metadata)} metadata records")
             print(f"   Sample fields: {list(metadata[0].keys())[:10]}")
 
-            # Download content - standard approach works fine
-            print(f"📥 Loading content...")
-            content = load_dataset("th1nhng0/vietnamese-legal-documents", "content", split="data")
-            print(f"✅ Loaded {len(content)} content records")
-            print(f"   Sample fields: {list(content[0].keys())[:10]}")
-            print(f"   Sample doc_id: {content[0].get('doc_id', 'N/A')}")
+            # Download content - read parquet directly to avoid ArrowInvalid error
+            print(f"📥 Loading content (reading parquet directly)...")
+            from huggingface_hub import hf_hub_download
+            import pyarrow.parquet as pq
 
-            # Convert to pandas and build dict
+            # Download content.parquet to temp location
+            content_path = hf_hub_download(
+                repo_id="th1nhng0/vietnamese-legal-documents",
+                filename="data/content.parquet",
+                repo_type="dataset",
+            )
+
+            # Read with pyarrow (handles large_string dtype)
+            table = pq.read_table(content_path)
+            print(f"✅ Loaded content table with {len(table)} rows")
+            print(f"   Sample fields: {table.column_names[:10]}")
+
+            # Build content dict - NOTE: content uses 'doc_id' field
             print("📝 Building content lookup dictionary...")
-            content_df = content.to_pandas()
             content_dict = {}
-            for _, row in tqdm(content_df.iterrows(), total=len(content_df), desc="Indexing content"):
-                doc_id = str(row.get("doc_id", ""))
+            doc_id_col = table.column("doc_id").to_pylist()
+            content_html_col = table.column("content_html").to_pylist()
+
+            for doc_id, content_html in tqdm(zip(doc_id_col, content_html_col), total=len(doc_id_col), desc="Indexing content"):
                 if doc_id:
-                    content_dict[doc_id] = {
-                        "doc_id": doc_id,
-                        "content_html": row.get("content_html", ""),
+                    content_dict[str(doc_id)] = {
+                        "doc_id": str(doc_id),
+                        "content_html": content_html or "",
                     }
 
             print(f"✅ Indexed {len(content_dict)} content records")
+            if content_dict:
+                sample_id = list(content_dict.keys())[0]
+                print(f"   Sample doc_id: {sample_id}")
 
-            # Convert to our format
+            # Convert to our format - NOTE: metadata uses 'id' field
             our_format = []
             docs_with_content = 0
             docs_without_content = 0
 
             for meta in tqdm(metadata, desc="Merging metadata and content"):
-                doc_id = str(meta.get("doc_id", ""))
-                content_item = content_dict.get(doc_id, {})
+                # Metadata uses 'id' field, content uses 'doc_id'
+                meta_id = str(meta.get("id", ""))
+                content_item = content_dict.get(meta_id, {})
 
                 our_doc = {
                     "url": meta.get("url", ""),
-                    "doc_id": doc_id,
+                    "doc_id": meta_id,  # Use 'id' from metadata as doc_id
                     "title": meta.get("title", ""),
-                    "doc_number": meta.get("doc_number", ""),
-                    "doc_type": meta.get("doc_type", ""),
-                    "issuing_authority": meta.get("issuing_authority", ""),
-                    "issue_date": meta.get("issue_date", ""),
-                    "effective_date": meta.get("effective_date", ""),
-                    "status": meta.get("status", ""),
-                    "sector": meta.get("sector", ""),
-                    "field": meta.get("field", ""),
+                    "doc_number": meta.get("so_ky_hieu", ""),  # Vietnamese field name
+                    "doc_type": meta.get("loai_van_ban", ""),  # Vietnamese field name
+                    "issuing_authority": meta.get("co_quan_ban_hanh", ""),  # Will be added
+                    "issue_date": meta.get("ngay_ban_hanh", ""),  # Vietnamese field name
+                    "effective_date": meta.get("ngay_co_hieu_luc", ""),  # Vietnamese field name
+                    "status": "",  # Will derive from dates
+                    "sector": meta.get("nganh", ""),  # Vietnamese field name
+                    "field": "",  # Not in metadata
                     "content_html": content_item.get("content_html", ""),
                     "content_text": "",
                     "content_markdown": "",
-                    "category": meta.get("category", ""),
-                    "sub_category": meta.get("sub_category", ""),
-                    "tags": meta.get("tags", []),
+                    "category": "",
+                    "sub_category": "",
+                    "tags": [],
                     "language": "vn",
                     "crawled_at": datetime.now().isoformat(),
                     "crawl_source": "huggingface:th1nhng0/vietnamese-legal-documents",
