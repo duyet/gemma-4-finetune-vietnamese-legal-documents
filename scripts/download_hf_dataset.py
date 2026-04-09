@@ -41,17 +41,42 @@ def main(output: str, split: str):
             metadata = load_dataset("th1nhng0/vietnamese-legal-documents", "metadata", split="data")
             print(f"✅ Loaded {len(metadata)} metadata records")
 
-            # Download content - use streaming mode to handle large_string dtype
-            print(f"📥 Loading content via streaming...")
-            content_stream = load_dataset("th1nhng0/vietnamese-legal-documents", "content", split="data", streaming=True)
+            # Download content - handle large_string dtype by downloading parquet directly
+            print(f"📥 Loading content (handling large_string dtype)...")
+            from huggingface_hub import hf_hub_download
 
-            # Build content dict directly from streaming to avoid memory issues
+            # Download content.parquet directly to avoid Arrow casting issues
+            cache_dir = output_path / ".cache"
+            cache_dir.mkdir(parents=True, exist_ok=True)
+
+            content_path = hf_hub_download(
+                repo_id="th1nhng0/vietnamese-legal-documents",
+                filename="data/content.parquet",
+                repo_type="dataset",
+                local_dir=output_path,
+                local_dir_use_symlinks=False
+            )
+            print(f"✅ Downloaded content.parquet")
+
+            # Read with pyarrow using large_string support
+            import pyarrow.parquet as pq
+            import pyarrow as pa
+
+            print("📝 Reading content with proper dtype handling...")
+            table = pq.read_table(content_path)
+            print(f"✅ Loaded content table with {len(table)} rows")
+
+            # Build content dict
             print("📝 Building content lookup dictionary...")
             content_dict = {}
-            for item in tqdm(content_stream, desc="Streaming and indexing content"):
-                doc_id = item.get("doc_id", "")
+            for i in tqdm(range(len(table)), desc="Indexing content"):
+                row = table.slice(i, 1).to_pydict()
+                doc_id = row.get("doc_id", [None])[0]
                 if doc_id:
-                    content_dict[doc_id] = item
+                    content_dict[str(doc_id)] = {
+                        "doc_id": str(doc_id),
+                        "content_html": row.get("content_html", [""])[0],
+                    }
 
             print(f"✅ Indexed {len(content_dict)} content records")
 
