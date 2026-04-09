@@ -118,29 +118,11 @@ def main(output: str, split: str):
         existing_columns = [col for col in expected_columns if col in meta_pd.columns]
         result_pd = meta_pd[existing_columns]
 
-        # Save in chunks with progress indication (faster and shows progress)
-        print("📝 Saving to parquet in chunks...")
-        import pyarrow as pa
-        import pyarrow.parquet as pq
-
-        # Convert to pyarrow table (faster than pandas to_parquet for large data)
-        print("   Converting to Arrow format...")
-        table = pa.Table.from_pandas(result_pd)
-
-        # Write in chunks with progress
-        print("   Writing to disk...")
-        pq.write_table(
-            table,
-            output_path / "documents.parquet",
-            compression='snappy',
-            row_group_size=10000  # Write in 10k row groups
-        )
-
-        print(f"✅ Saved {len(result_pd)} documents to {output_path / 'documents.parquet'}")
-
-        # Show file size
-        file_size = (output_path / "documents.parquet").stat().st_size / (1024**2)  # MB
-        print(f"   File size: {file_size:.1f} MB")
+        # Skip saving - training script will load from HuggingFace directly
+        # This is faster and avoids the slow Arrow conversion
+        print(f"\n✅ Loaded {len(result_pd):,} documents from HuggingFace")
+        print(f"   Training will load from HuggingFace automatically (no save needed)")
+        print(f"   This is faster and more reliable")
 
         # Statistics
         docs_with_content = result_pd["content_html"].apply(lambda x: bool(x and isinstance(x, str) and x.strip())).sum()
