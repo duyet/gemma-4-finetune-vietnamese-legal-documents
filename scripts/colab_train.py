@@ -99,7 +99,7 @@ def load_training_data(data_dir: str) -> Dataset:
     # Try loading from HF dataset format first
     if (data_path / "dataset_info.json").exists():
         print(f"\n📂 Loading dataset from {data_dir}")
-        dataset = load_dataset(str(data_dir), split="train")
+        dataset = load_dataset(str(data_path), split="train")
         print(f"✅ Loaded {len(dataset):,} examples")
         return dataset
 
@@ -113,7 +113,42 @@ def load_training_data(data_dir: str) -> Dataset:
         print(f"✅ Loaded {len(df):,} documents")
         return Dataset.from_pandas(df)
 
-    raise FileNotFoundError(f"No dataset found in {data_dir}")
+    # If no local data, load directly from HuggingFace
+    print(f"\n📂 No local data found, loading from HuggingFace...")
+    print("    This will download and cache the dataset (one-time operation)")
+
+    # Load metadata and content separately
+    from huggingface_hub import hf_hub_download
+    import pandas as pd
+    import pyarrow.parquet as pq
+
+    # Download metadata
+    metadata = load_dataset("th1nhng0/vietnamese-legal-documents", "metadata", split="data")
+    print(f"   ✅ Loaded {len(metadata)} metadata records")
+
+    # Download content
+    content_path = hf_hub_download(
+        repo_id="th1nhng0/vietnamese-legal-documents",
+        filename="data/content.parquet",
+        repo_type="dataset",
+    )
+    content_table = pq.read_table(content_path)
+    content_df = content_table.to_pandas()
+    print(f"   ✅ Loaded {len(content_df)} content records")
+
+    # Merge
+    print("   📝 Merging metadata and content...")
+    meta_pd = metadata.to_pandas()
+    content_dict = dict(zip(
+        content_df["id"].astype(str).tolist(),
+        content_df["content_html"].tolist()
+    ))
+    meta_pd["content_html"] = meta_pd["id"].astype(str).map(content_dict)
+
+    # Convert to Dataset
+    dataset = Dataset.from_pandas(meta_pd)
+    print(f"✅ Loaded {len(dataset):,} documents from HuggingFace")
+    return dataset
 
 
 def build_pretrain_corpus(dataset: Dataset) -> Dataset:
