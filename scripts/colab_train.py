@@ -136,17 +136,28 @@ def load_training_data(data_dir: str) -> Dataset:
     content_df = content_table.to_pandas()
     print(f"   ✅ Loaded {len(content_df)} content records")
 
-    # Use index-based lookup (faster than merge)
-    print("   📝 Merging metadata and content...")
+    # Build lookup dict from content (only rows we need)
+    print("   📝 Building content lookup...")
     meta_pd = metadata.to_pandas()
 
-    # Set content id as index for fast lookup
-    content_lookup = content_df[["id", "content_html"]].copy()
-    content_lookup["id"] = content_lookup["id"].astype(str)
-    content_lookup = content_lookup.set_index("id")["content_html"]
+    # Get set of IDs we need
+    needed_ids = set(meta_pd["id"].astype(str).unique())
+    print(f"      Need {len(needed_ids):,} documents")
 
-    # Map using index (much faster)
-    meta_pd["content_html"] = meta_pd["id"].astype(str).map(content_lookup)
+    # Filter content to only needed IDs (much smaller)
+    content_df["id_str"] = content_df["id"].astype(str)
+    content_filtered = content_df[content_df["id_str"].isin(needed_ids)]
+    print(f"      Filtered to {len(content_filtered):,} content records")
+
+    # Build dict from filtered data
+    content_dict = dict(zip(
+        content_filtered["id_str"],
+        content_filtered["content_html"]
+    ))
+
+    # Map using dict (fast now that it's smaller)
+    print("      Mapping content to metadata...")
+    meta_pd["content_html"] = meta_pd["id"].astype(str).map(content_dict)
 
     # Convert to Dataset
     dataset = Dataset.from_pandas(meta_pd)
