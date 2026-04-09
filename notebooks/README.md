@@ -4,9 +4,47 @@ This directory contains Google Colab notebooks for fine-tuning Gemma 4 models.
 
 ## 📓 Available Notebooks
 
-### Colab_Train.ipynb (Main)
+### Gemma4_Vietnamese_Legal_Train.ipynb (Main - Full Pipeline)
 
-**Simplified auto-training notebook** - Just clone and run!
+**Complete training notebook with flag-controlled pipeline** - One notebook to do everything!
+
+**Features:**
+- ✅ Clone repository automatically
+- ✅ Crawl data (optional, controlled by flag)
+- ✅ Download/merge datasets
+- ✅ Upload to HuggingFace (optional)
+- ✅ Fine-tune Gemma 4 E2B
+- ✅ Export to GGUF
+- ✅ Upload model to HF (optional)
+- ✅ Generate evaluation scores
+- ✅ Push results to GitHub (optional)
+
+**Control everything via FLAGS in the first cell:**
+```python
+# Data Pipeline
+CRAWL_ENABLED = False  # Set True to crawl
+CRAWL_PAGES = 100
+DOWNLOAD_HF_DATASET = True
+UPLOAD_DATASET_TO_HF = False
+
+# Training
+RUN_TRAINING = True
+TRAINING_STAGE = "pretrain"  # "pretrain", "sft", "both"
+
+# Export & Upload
+EXPORT_TO_GGUF = True
+UPLOAD_MODEL_TO_HF = False
+
+# Evaluation
+GENERATE_SCORES = True
+PUSH_RESULTS_TO_GITHUB = False
+```
+
+**Quick Start:**
+```bash
+# Open Colab and get instructions
+./scripts/colab.sh
+```
 
 **Features:**
 - ✅ Auto-clones latest code from GitHub
@@ -18,8 +56,8 @@ This directory contains Google Colab notebooks for fine-tuning Gemma 4 models.
 
 **Usage:**
 1. Open Google Colab: https://colab.research.google.com/
-2. Upload `Colab_Train.ipynb`
-3. Edit configuration cell with your settings
+2. Upload `Gemma4_Vietnamese_Legal_Train.ipynb`
+3. Edit flags in first cell (set True/False for each step)
 4. Connect to T4 GPU (Runtime → Change runtime type)
 5. Run all cells (Runtime → Run all)
 
