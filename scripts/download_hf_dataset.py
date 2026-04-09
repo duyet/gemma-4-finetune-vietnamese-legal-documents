@@ -41,12 +41,19 @@ def main(output: str, split: str):
             metadata = load_dataset("th1nhng0/vietnamese-legal-documents", "metadata", split="data")
             print(f"✅ Loaded {len(metadata)} metadata records")
 
-            # Download content
-            content = load_dataset("th1nhng0/vietnamese-legal-documents", "content", split="data")
-            print(f"✅ Loaded {len(content)} content records")
+            # Download content - use streaming for large 412MB file with large_string dtype
+            print(f"📥 Loading content via streaming (412MB file)...")
+            content_stream = load_dataset("th1nhng0/vietnamese-legal-documents", "content", split="data", streaming=True)
 
-            # Merge metadata and content by document ID
-            content_dict = {item.get("doc_id", ""): item for item in content}
+            # Build content dict directly from streaming to avoid memory issues
+            print("📝 Building content lookup dictionary...")
+            content_dict = {}
+            for item in tqdm(content_stream, desc="Streaming and indexing content"):
+                doc_id = item.get("doc_id", "")
+                if doc_id:
+                    content_dict[doc_id] = item
+
+            print(f"✅ Indexed {len(content_dict)} content records")
 
             # Convert to our format
             our_format = []
