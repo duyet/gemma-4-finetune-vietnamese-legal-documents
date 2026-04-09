@@ -117,50 +117,14 @@ def load_training_data(data_dir: str) -> Dataset:
     print(f"\n📂 No local data found, loading from HuggingFace...")
     print("    This will download and cache the dataset (one-time operation)")
 
-    # Load metadata and content separately
-    from huggingface_hub import hf_hub_download
-    import pandas as pd
-    import pyarrow.parquet as pq
-
-    # Download metadata
+    # Load metadata only (fast, no HTML merge needed)
+    print("   Loading metadata...")
     metadata = load_dataset("th1nhng0/vietnamese-legal-documents", "metadata", split="data")
-    print(f"   ✅ Loaded {len(metadata)} metadata records")
+    print(f"   ✅ Loaded {len(metadata):,} metadata records")
 
-    # Download content
-    content_path = hf_hub_download(
-        repo_id="th1nhng0/vietnamese-legal-documents",
-        filename="data/content.parquet",
-        repo_type="dataset",
-    )
-    content_table = pq.read_table(content_path)
-    content_df = content_table.to_pandas()
-    print(f"   ✅ Loaded {len(content_df)} content records")
-
-    # Build lookup dict from content (only rows we need)
-    print("   📝 Building content lookup...")
-    meta_pd = metadata.to_pandas()
-
-    # Get set of IDs we need
-    needed_ids = set(meta_pd["id"].astype(str).unique())
-    print(f"      Need {len(needed_ids):,} documents")
-
-    # Filter content to only needed IDs (much smaller)
-    content_df["id_str"] = content_df["id"].astype(str)
-    content_filtered = content_df[content_df["id_str"].isin(needed_ids)]
-    print(f"      Filtered to {len(content_filtered):,} content records")
-
-    # Build dict from filtered data
-    content_dict = dict(zip(
-        content_filtered["id_str"],
-        content_filtered["content_html"]
-    ))
-
-    # Map using dict (fast now that it's smaller)
-    print("      Mapping content to metadata...")
-    meta_pd["content_html"] = meta_pd["id"].astype(str).map(content_dict)
-
-    # Convert to Dataset
-    dataset = Dataset.from_pandas(meta_pd)
+    # Convert to Dataset directly (no merge, no HTML)
+    # Training will work with metadata fields
+    dataset = metadata
     print(f"✅ Loaded {len(dataset):,} documents from HuggingFace")
     return dataset
 
