@@ -3,7 +3,7 @@
 Download and prepare existing HuggingFace dataset.
 
 This script:
-1. Downloads th1nhng0/vietnamese-legal-documents from HF
+1. Downloads th1nh0/vietnamese-legal-documents from HF
 2. Converts to our format
 3. Splits into passages
 4. Prepares for training
@@ -30,7 +30,7 @@ def main(output: str, split: str):
     print("=" * 60)
     print("Downloading Vietnamese Legal Documents from HuggingFace")
     print("=" * 60)
-    print(f"\nSource: th1nhng0/vietnamese-legal-documents")
+    print(f"\nSource: th1nh0/vietnamese-legal-documents")
     print(f"Output: {output_path}")
 
     # Download documents config
