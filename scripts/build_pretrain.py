@@ -25,7 +25,7 @@ import json
 from pathlib import Path
 
 import click
-import pandas as pd
+import polars as pl
 from tqdm import tqdm
 
 
@@ -42,12 +42,12 @@ def main(input: str, output: str, include_meta: bool, format: str):
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     print(f"Loading documents from {input_path}")
-    df = pd.read_parquet(input_path)
+    df = pl.read_parquet(input_path)
 
     print(f"Processing {len(df)} documents")
 
     with open(output_path, "w", encoding="utf-8") as f:
-        for _, doc in tqdm(df.iterrows(), total=len(df)):
+        for doc in tqdm(df.iter_rows(named=True), total=len(df)):
             content = doc.get("content_markdown") or doc.get("content_text", "")
             if not content:
                 continue

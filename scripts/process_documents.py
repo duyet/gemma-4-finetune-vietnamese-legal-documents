@@ -20,7 +20,7 @@ import click
 from tqdm import tqdm
 from bs4 import BeautifulSoup
 from markdownify import markdownify as md
-import pandas as pd
+import polars as pl
 
 
 def load_jsonl(file_path: Path) -> Generator[dict, None, None]:
@@ -139,9 +139,8 @@ def main(input: str, output: str, passages_output: str, max_tokens: int):
 
     # Detect input format and load accordingly
     if input_path.suffix == ".parquet":
-        import pandas as pd
-        df = pd.read_parquet(input_path)
-        docs_list = df.to_dict("records")
+        df = pl.read_parquet(input_path)
+        docs_list = df.to_dicts()
         print(f"Loaded {len(docs_list)} documents from Parquet")
     else:
         docs_list = list(load_jsonl(input_path))
@@ -170,16 +169,16 @@ def main(input: str, output: str, passages_output: str, max_tokens: int):
         documents.append(doc)
 
     # Convert to DataFrame and save
-    df_docs = pd.DataFrame(documents)
-    df_passages = pd.DataFrame(all_passages)
+    df_docs = pl.DataFrame(documents)
+    df_passages = pl.DataFrame(all_passages)
 
     print(f"\nProcessed {len(documents)} documents")
     print(f"Created {len(all_passages)} passages")
     print(f"Errors: {len(errors)}")
 
     # Save to Parquet
-    df_docs.to_parquet(output_path, index=False)
-    df_passages.to_parquet(passages_path, index=False)
+    df_docs.write_parquet(output_path)
+    df_passages.write_parquet(passages_path)
 
     print(f"\nSaved documents to {output_path}")
     print(f"Saved passages to {passages_path}")
