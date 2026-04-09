@@ -16,8 +16,8 @@ from unsloth import FastModel
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Export model to GGUF format")
-    parser.add_argument("--model-dir", type=str, required=True,
-                        help="Directory containing LoRA adapters")
+    parser.add_argument("--model-dir", type=str, default=None,
+                        help="Directory containing LoRA adapters (auto-detected if not set)")
     parser.add_argument("--output-dir", type=str, default=None,
                         help="Output directory for GGUF files (auto-generated from model-dir if not set)")
     parser.add_argument("--quantization", type=str, default="q4_k_m",
@@ -26,6 +26,26 @@ def parse_args():
     parser.add_argument("--max-seq-length", type=int, default=4096,
                         help="Maximum sequence length")
     return parser.parse_args()
+
+
+def auto_detect_model_dir():
+    """Auto-detect the latest model directory."""
+    import glob
+
+    # Look for directories matching the pattern
+    pattern = "gemma-*-vi-legal-pretrain"
+    matches = glob.glob(pattern)
+
+    if not matches:
+        raise FileNotFoundError(
+            f"No model directory found matching pattern '{pattern}'\n"
+            f"Please run training first or specify --model-dir"
+        )
+
+    # Sort by modification time, get the latest
+    latest = max(matches, key=lambda p: Path(p).stat().st_mtime)
+    print(f"🔍 Auto-detected model directory: {latest}")
+    return latest
 
 
 def get_output_dir(args) -> str:
@@ -114,6 +134,11 @@ def export_to_gguf(args):
 
 def main():
     args = parse_args()
+
+    # Auto-detect model directory if not specified
+    if args.model_dir is None:
+        args.model_dir = auto_detect_model_dir()
+
     args.output_dir = get_output_dir(args)
     export_to_gguf(args)
 
