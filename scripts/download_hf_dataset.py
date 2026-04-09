@@ -119,9 +119,13 @@ def main(output: str, split: str):
         result_pd = meta_pd[existing_columns]
 
         # Save directly with pandas (fast and simple)
-        print("📝 Saving to parquet...")
-        result_pd.to_parquet(output_path / "documents.parquet", index=False)
+        print("📝 Saving to parquet (this may take 1-2 minutes for 153k documents)...")
+        result_pd.to_parquet(output_path / "documents.parquet", index=False, compression="snappy")
         print(f"✅ Saved {len(result_pd)} documents to {output_path / 'documents.parquet'}")
+
+        # Show file size
+        file_size = (output_path / "documents.parquet").stat().st_size / (1024**2)  # MB
+        print(f"   File size: {file_size:.1f} MB")
 
         # Statistics
         docs_with_content = result_pd["content_html"].apply(lambda x: bool(x and isinstance(x, str) and x.strip())).sum()
