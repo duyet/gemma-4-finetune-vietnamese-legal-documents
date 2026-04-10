@@ -149,38 +149,26 @@ def load_training_data(config):
     # Build training corpus from conversations format
     print("\n📝 Building training corpus...")
 
-    corpus_text = []
+    # Keep conversations in original format for Unsloth
+    conversations_data = []
     for example in dataset:
         if "conversations" in example:
             conversations = example["conversations"]
-            parts = []
+            # Filter out empty messages
+            filtered_convs = [
+                msg for msg in conversations
+                if msg.get("role") and msg.get("content")
+            ]
+            if filtered_convs:
+                conversations_data.append({
+                    "conversations": filtered_convs
+                })
 
-            for msg in conversations:
-                role = msg.get("role", "")
-                text = msg.get("content", "")
+    print(f"✅ Built corpus with {len(conversations_data):,} examples")
 
-                if role and text:
-                    # Map to Gemma 4 chat format
-                    if role == "user":
-                        parts.append(f"<start_of_turn>user\n{text}<end_of_turn>")
-                    elif role == "assistant":
-                        parts.append(f"<start_of_turn>model\n{text}<end_of_turn>")
-                    elif role == "system":
-                        parts.append(f"System: {text}")
-
-            if parts:
-                corpus_text.append("\n".join(parts) + "\n")
-
-    print(f"✅ Built corpus with {len(corpus_text):,} examples")
-
-    # Estimate tokens
-    total_chars = sum(len(t) for t in corpus_text)
-    estimated_tokens = total_chars // 4
-    print(f"📊 Estimated tokens: {estimated_tokens:,}")
-
-    # Return as HF dataset
+    # Return as HF dataset with conversations
     from datasets import Dataset as HFDataset
-    return HFDataset.from_dict({"text": corpus_text})
+    return HFDataset.from_list(conversations_data)
 
 
 def train(config):
@@ -246,7 +234,6 @@ def train(config):
         model=model,
         tokenizer=tokenizer,
         train_dataset=train_dataset,
-        dataset_text_field="text",
         max_seq_length=config["max_seq_length"],
         args=training_args,
     )
