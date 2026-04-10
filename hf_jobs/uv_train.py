@@ -156,7 +156,6 @@ def main():
         bf16=torch.cuda.is_bf16_supported(),
         report_to="none",
         remove_unused_columns=False,
-        processing_class=tokenizer,  # Explicitly set processing class
     )
 
     # Create trainer
