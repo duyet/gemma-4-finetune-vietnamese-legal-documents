@@ -132,15 +132,30 @@ def train(config):
     print(f"LoRA: r={config['lora_r']}, alpha={config['lora_alpha']}")
     print("="*60)
 
-    # Load model
+    # Load model with retry logic for HF connectivity issues
     print(f"\n🤖 Loading model: {config['base_model']}")
-    model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name=config["base_model"],
-        max_seq_length=config["max_seq_length"],
-        dtype=None,
-        load_in_4bit=config["load_in_4bit"],
-    )
-    print("✅ Model loaded")
+
+    import time
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            model, tokenizer = FastLanguageModel.from_pretrained(
+                model_name=config["base_model"],
+                max_seq_length=config["max_seq_length"],
+                dtype=None,
+                load_in_4bit=config["load_in_4bit"],
+                token=os.environ.get("HF_TOKEN"),  # Use HF token for authenticated access
+            )
+            print("✅ Model loaded")
+            break
+        except TimeoutError as e:
+            if attempt < max_retries - 1:
+                wait_time = (attempt + 1) * 30
+                print(f"⚠️  HF connection timeout (attempt {attempt + 1}/{max_retries})")
+                print(f"   Waiting {wait_time}s before retry...")
+                time.sleep(wait_time)
+            else:
+                raise e
 
     # Set special tokens
     if tokenizer.pad_token is None:
