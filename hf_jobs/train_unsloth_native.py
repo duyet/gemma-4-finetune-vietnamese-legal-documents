@@ -159,6 +159,7 @@ def train(config):
         bf16=torch.cuda.is_bf16_supported(),
         report_to="none",
         save_strategy="steps",
+        remove_unused_columns=False,  # Keep 'text' column for causal LM
     )
 
     # Data collator
