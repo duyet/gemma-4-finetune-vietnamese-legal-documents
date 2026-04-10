@@ -102,13 +102,19 @@ def format_dataset_to_text(dataset, tokenizer):
         tokenized["labels"] = tokenized["input_ids"].copy()
         return tokenized
 
+    # Remove all columns except the tokenized ones
+    # Keep only: input_ids, attention_mask, labels
+    columns_to_keep = set(["input_ids", "attention_mask", "labels"])
+    columns_to_remove = [col for col in dataset.column_names if col not in columns_to_keep]
+
     tokenized_dataset = dataset.map(
         tokenize_function,
         batched=True,
-        remove_columns=["text"]  # Remove raw text, keep only tokenized
+        remove_columns=columns_to_remove  # Remove all non-tokenized columns
     )
 
     print(f"✅ Tokenized {len(tokenized_dataset):,} examples")
+    print(f"✅ Columns: {tokenized_dataset.column_names}")
     return tokenized_dataset
 
 
