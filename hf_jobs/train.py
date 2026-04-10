@@ -20,27 +20,13 @@ import json
 from pathlib import Path
 from datetime import datetime
 
-def setup_dependencies(config):
+def setup_dependencies(config=None):
     """Setup dependencies based on model requirements."""
     import subprocess
 
     print("\n" + "="*60)
     print("SETUP DEPENDENCIES")
     print("="*60)
-
-    # Check if model requires newer transformers
-    base_model = config["base_model"].lower()
-    requires_new_transformers = any(x in base_model for x in ["gemma-4", "gemma4"])
-
-    if requires_new_transformers:
-        print("📦 Upgrading transformers for Gemma 4 support...")
-        subprocess.check_call([
-            sys.executable, "-m", "pip", "install", "--quiet",
-            "--upgrade", "transformers>=4.57.2"
-        ])
-        print("✅ Transformers upgraded")
-    else:
-        print("✅ Using Docker image transformers version")
 
     # Install required packages
     print("📦 Installing required packages...")
@@ -49,6 +35,21 @@ def setup_dependencies(config):
         "packaging", "wheel"
     ])
     print("✅ Dependencies installed")
+
+    # Upgrade transformers if config provided and model requires it
+    if config:
+        base_model = config.get("base_model", "").lower()
+        requires_new_transformers = any(x in base_model for x in ["gemma-4", "gemma4"])
+
+        if requires_new_transformers:
+            print("📦 Upgrading transformers for Gemma 4 support...")
+            subprocess.check_call([
+                sys.executable, "-m", "pip", "install", "--quiet",
+                "--upgrade", "transformers>=4.57.2"
+            ])
+            print("✅ Transformers upgraded")
+        else:
+            print("✅ Using Docker image transformers version")
 
 
 # Run setup before any imports
