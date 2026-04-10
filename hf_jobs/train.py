@@ -45,9 +45,9 @@ def setup_dependencies(config=None):
             print("📦 Upgrading transformers for Gemma 4 support...")
             subprocess.check_call([
                 sys.executable, "-m", "pip", "install", "--quiet",
-                "--upgrade", "transformers>=4.57.2"
+                "--force-reinstall", "transformers==4.57.3"
             ])
-            print("✅ Transformers upgraded")
+            print("✅ Transformers upgraded to 4.57.3")
         else:
             print("✅ Using Docker image transformers version")
 
