@@ -53,8 +53,8 @@ hf jobs run \
     --env "OUTPUT_DIR=/workspace/gemma-4-E2B-vietnamese-legal" \
     --secrets "HF_TOKEN" \
     --detach \
-    python:3.10 \
-    bash -c "cd /root && git clone https://github.com/duyet/gemma-4-finetune-vietnamese-legal-documents.git && cd /root/gemma-4-finetune-vietnamese-legal-documents && pip install -q 'unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git' && python /root/gemma-4-finetune-vietnamese-legal-documents/hf_jobs/train.py"
+    unsloth/unsloth \
+    bash -c "cd /workspace && git clone https://github.com/duyet/gemma-4-finetune-vietnamese-legal-documents.git && cd /workspace/gemma-4-finetune-vietnamese-legal-documents && python /workspace/gemma-4-finetune-vietnamese-legal-documents/hf_jobs/train.py"
 
 echo ""
 echo "✅ Job submitted!"
