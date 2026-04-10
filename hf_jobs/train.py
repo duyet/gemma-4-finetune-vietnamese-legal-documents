@@ -96,7 +96,7 @@ def check_gpu():
     return device
 
 
-def load_dataset(config):
+def load_training_data(config):
     """Load and prepare training dataset."""
     print("\n" + "="*60)
     print("LOADING DATASET")
@@ -106,7 +106,8 @@ def load_dataset(config):
     print(f"   Split: {config['dataset_split']}")
 
     # Load dataset with newer API
-    raw_dataset = load_dataset(config["dataset_name"])
+    from datasets import load_dataset as hf_load_dataset
+    raw_dataset = hf_load_dataset(config["dataset_name"])
 
     # Get the specified split
     if config["dataset_split"] in raw_dataset:
@@ -167,7 +168,7 @@ def train(config):
     print("="*60)
 
     # Load dataset
-    train_dataset = load_dataset(config)
+    train_dataset = load_training_data(config)
 
     # Load model with Unsloth
     print(f"\n🤖 Loading model: {config['base_model']}")
