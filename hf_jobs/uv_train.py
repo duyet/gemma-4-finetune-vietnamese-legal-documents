@@ -154,8 +154,6 @@ def main():
         bf16=torch.cuda.is_bf16_supported(),
         report_to="none",
         remove_unused_columns=False,
-        max_seq_length=args.max_seq_length,
-        dataset_text_field="text",
     )
 
     # Create trainer
