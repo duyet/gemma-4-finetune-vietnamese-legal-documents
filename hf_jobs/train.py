@@ -148,7 +148,7 @@ def load_training_data(config, tokenizer):
 
     # Configure chat template for Gemma 4
     print("\n📝 Configuring Gemma 4 chat template...")
-    from unsloth.chat_templates import get_chat_template, standardize_sharegpt
+    from unsloth.chat_templates import get_chat_template
 
     tokenizer = get_chat_template(
         tokenizer,
@@ -156,29 +156,23 @@ def load_training_data(config, tokenizer):
         mapping={"role": "role", "content": "content", "user": "user", "assistant": "model"},
     )
 
-    def format_to_messages(examples):
-        """Convert conversations to messages format for Unsloth."""
-        messages_list = []
-        for convos in examples["conversations"]:
-            # Filter out empty messages
-            filtered_msgs = [
-                {k: v for k, v in msg.items() if msg.get("content")}
-                for msg in convos
-                if msg.get("role") and msg.get("content")
-            ]
-            if filtered_msgs:
-                messages_list.append(filtered_msgs)
-            else:
-                messages_list.append([])
-        return {"messages": messages_list}
+    def format_conversations(examples):
+        """Format conversations using Gemma 4 chat template."""
+        convos = examples["conversations"]
+        texts = [
+            tokenizer.apply_chat_template(
+                convo,
+                tokenize=False,
+                add_generation_prompt=False
+            ) for convo in convos
+        ]
+        return {"text": texts}
 
-    # Format to messages
-    print("Formatting to messages format...")
-    dataset = dataset.map(
-        format_to_messages,
-        batched=True,
-        remove_columns=dataset.column_names,
-    )
+    # Apply formatting and remove all columns except 'text'
+    print("Formatting conversations...")
+    columns_to_keep = ["text"]
+    columns_to_remove = [col for col in dataset.column_names if col not in columns_to_keep]
+    dataset = dataset.map(format_conversations, batched=True, remove_columns=columns_to_remove)
 
     print(f"✅ Formatted {len(dataset):,} examples")
 
@@ -240,6 +234,7 @@ def train(config):
         fp16=not torch.cuda.is_bf16_supported(),
         bf16=torch.cuda.is_bf16_supported(),
         report_to="none",
+        packing=True,
     )
 
     # Create trainer
@@ -247,6 +242,7 @@ def train(config):
         model=model,
         tokenizer=tokenizer,
         train_dataset=train_dataset,
+        dataset_text_field="text",
         max_seq_length=config["max_seq_length"],
         args=training_args,
     )
