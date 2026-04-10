@@ -220,6 +220,10 @@ def train(config):
     )
     model.print_trainable_parameters()
 
+    # Configure model config with correct tokens
+    model.config.eos_token_id = tokenizer.eos_token_id
+    model.config.pad_token_id = tokenizer.pad_token_id
+
     # Ensure tokenizer has proper special tokens set
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
