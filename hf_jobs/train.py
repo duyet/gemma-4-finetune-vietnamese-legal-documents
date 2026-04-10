@@ -21,22 +21,14 @@ from pathlib import Path
 from datetime import datetime
 
 def setup_dependencies():
-    """Upgrade dependencies for Gemma 4 support."""
+    """Install required dependencies."""
     import subprocess
 
     print("\n" + "="*60)
     print("SETUP DEPENDENCIES")
     print("="*60)
 
-    # Upgrade transformers for Gemma 4 support
-    print("\n📦 Upgrading transformers for Gemma 4 support...")
-    subprocess.check_call([
-        sys.executable, "-m", "pip", "install", "--quiet",
-        "--upgrade", "transformers>=4.57.2"
-    ])
-    print("✅ Transformers upgraded")
-
-    # Install required packages
+    # Install required packages (don't upgrade transformers - use Docker image version)
     print("📦 Installing required packages...")
     subprocess.check_call([
         sys.executable, "-m", "pip", "install", "--quiet",
@@ -234,7 +226,6 @@ def train(config):
         fp16=not torch.cuda.is_bf16_supported(),
         bf16=torch.cuda.is_bf16_supported(),
         report_to="none",
-        packing=True,
         remove_unused_columns=False,
     )
 
