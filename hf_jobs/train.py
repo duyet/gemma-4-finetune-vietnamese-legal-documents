@@ -235,6 +235,7 @@ def train(config):
         bf16=torch.cuda.is_bf16_supported(),
         report_to="none",
         packing=True,
+        remove_unused_columns=False,
     )
 
     # Create trainer
