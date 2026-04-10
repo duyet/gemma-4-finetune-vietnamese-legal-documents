@@ -50,7 +50,7 @@ submit_job() {
     log_info "Attempt #$attempt: Submitting job with $model"
 
     # Try to submit job
-    if hf jobs run \
+    local submit_output=$(hf jobs run \
         --flavor t4-medium \
         --env "BASE_MODEL=$model" \
         --env "DATASET_NAME=duyet/vietnamese-legal-instruct" \
@@ -68,19 +68,40 @@ submit_job() {
         --secrets "HF_TOKEN" \
         --detach \
         unsloth/unsloth \
-        bash -c "cd /workspace && git clone --depth 1 https://github.com/duyet/gemma-4-finetune-vietnamese-legal-documents.git && cd gemma-4-finetune-vietnamese-legal-documents && pip install -q peft bitsandbytes && python $script" 2>&1 | tee -a "$LOG_FILE"; then
+        bash -c "cd /workspace && git clone --depth 1 https://github.com/duyet/gemma-4-finetune-vietnamese-legal-documents.git && cd gemma-4-finetune-vietnamese-legal-documents && pip install -q peft bitsandbytes && python $script" 2>&1)
 
-        # Extract job ID
+    local exit_code=$?
+
+    # Log the output
+    echo "$submit_output" >> "$LOG_FILE"
+
+    # Check for errors
+    if echo "$submit_output" | grep -q "Error:\|402 Payment Required"; then
+        log_error "❌ Job submission failed: $(echo "$submit_output" | grep -o 'Error: [^[:space:]]*' | head -1)"
+        return 1
+    fi
+
+    if [ $exit_code -ne 0 ]; then
+        log_error "❌ Job submission failed with exit code $exit_code"
+        return 1
+    fi
+
+    # Extract job ID from output
+    local job_id=$(echo "$submit_output" | grep -o 'Job started with ID: [0-9a-f]*' | awk '{print $5}')
+
+    if [ -z "$job_id" ]; then
+        # Try alternative method - get from job list
         sleep 5
-        local job_id=$(hf jobs ps 2>&1 | head -2 | tail -1 | awk '{print $1}')
-        if [ -n "$job_id" ] && [ "$job_id" != "JOB" ]; then
-            log_info "✅ Job submitted: $job_id"
-            echo "$job_id"
-            return 0
+        job_id=$(hf jobs ps 2>&1 | head -2 | tail -1 | awk '{print $1}')
+        if [ "$job_id" = "JOB" ] || [ -z "$job_id" ]; then
+            log_error "❌ Could not extract job ID from submission"
+            return 1
         fi
     fi
 
-    return 1
+    log_info "✅ Job submitted: $job_id"
+    echo "$job_id"
+    return 0
 }
 
 monitor_job() {
@@ -89,11 +110,24 @@ monitor_job() {
     local elapsed=0
     local check_interval=60  # 1 minute
 
+    # Validate job_id
+    if [ -z "$job_id" ] || [ "$job_id" = "No" ] || [ "$job_id" = "none" ]; then
+        log_error "❌ Invalid job ID: $job_id"
+        return 1
+    fi
+
     log_info "🔍 Monitoring job $job_id..."
 
     while [ $elapsed -lt $max_wait ]; do
         # Check job status
-        local status=$(hf jobs inspect "$job_id" 2>&1 | grep -A 1 '"stage"' | tail -1 | grep -o 'RUNNING\|SUCCEEDED\|FAILED\|ERROR\|CANCELED' || echo "UNKNOWN")
+        local status_output=$(hf jobs inspect "$job_id" 2>&1)
+        local status=$(echo "$status_output" | grep -A 1 '"stage"' | tail -1 | grep -o 'RUNNING\|SUCCEEDED\|FAILED\|ERROR\|CANCELED' || echo "UNKNOWN")
+
+        # If job not found, fail fast
+        if echo "$status_output" | grep -q "Could not find job"; then
+            log_error "❌ Job $job_id not found"
+            return 1
+        fi
 
         log_info "Status: $status (${elapsed}s elapsed)"
 
@@ -111,9 +145,11 @@ monitor_job() {
                 return 1
                 ;;
             RUNNING)
-                # Get recent logs
-                local logs=$(hf jobs logs "$job_id" 2>&1 | tail -20)
-                log_info "Recent logs:\n$logs"
+                # Get recent logs (sample to avoid spam)
+                if [ $((elapsed % 300)) -eq 0 ]; then  # Every 5 minutes
+                    local logs=$(hf jobs logs "$job_id" 2>&1 | tail -10)
+                    log_info "Recent logs (every 5 min):\n$logs"
+                fi
                 ;;
         esac
 
