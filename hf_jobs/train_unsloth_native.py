@@ -85,7 +85,31 @@ def format_dataset_to_text(dataset, tokenizer):
         remove_columns=["messages"]
     )
 
-    return dataset
+    # Now tokenize the text for causal LM training
+    print("Tokenizing dataset...")
+
+    def tokenize_function(examples):
+        """Tokenize text for causal LM training."""
+        # Tokenize with truncation and padding
+        tokenized = tokenizer(
+            examples["text"],
+            truncation=True,
+            max_length=4096,
+            padding=False,  # Dynamic padding in collator
+            return_tensors=None,  # Return lists for dataset.map
+        )
+        # For causal LM, labels are the same as input_ids
+        tokenized["labels"] = tokenized["input_ids"].copy()
+        return tokenized
+
+    tokenized_dataset = dataset.map(
+        tokenize_function,
+        batched=True,
+        remove_columns=["text"]  # Remove raw text, keep only tokenized
+    )
+
+    print(f"✅ Tokenized {len(tokenized_dataset):,} examples")
+    return tokenized_dataset
 
 
 def train(config):
