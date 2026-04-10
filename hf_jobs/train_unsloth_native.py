@@ -99,7 +99,8 @@ def format_dataset_to_text(dataset, tokenizer):
             return_tensors=None,  # Return lists for dataset.map
         )
         # For causal LM, labels are the same as input_ids
-        tokenized["labels"] = tokenized["input_ids"].copy()
+        # Create a proper deep copy
+        tokenized["labels"] = [ids.copy() for ids in tokenized["input_ids"]]
         return tokenized
 
     # Remove all columns except the tokenized ones
