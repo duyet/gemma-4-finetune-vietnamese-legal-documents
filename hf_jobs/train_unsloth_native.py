@@ -78,16 +78,12 @@ def format_dataset_to_text(dataset, tokenizer):
             texts.append(text)
         return {"text": texts}
 
-    # Apply formatting
+    # Apply formatting - convert messages to text using chat template
     dataset = dataset.map(
         format_conversations,
         batched=True,
-        remove_columns=[col for col in dataset.column_names if col != "messages"]
+        remove_columns=["messages"]
     )
-
-    # Rename messages to text (HuggingFace Trainer expects 'text' for causal LM)
-    dataset = dataset.rename_column("messages", "conversations")  # Keep original
-    dataset = dataset.map(format_conversations, batched, remove_columns=["conversations"])
 
     return dataset
 
