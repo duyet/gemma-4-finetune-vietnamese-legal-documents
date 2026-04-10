@@ -42,12 +42,8 @@ def setup_dependencies(config=None):
         requires_new_transformers = any(x in base_model for x in ["gemma-4", "gemma4"])
 
         if requires_new_transformers:
-            print("📦 Upgrading transformers for Gemma 4 support...")
-            subprocess.check_call([
-                sys.executable, "-m", "pip", "install", "--quiet",
-                "--force-reinstall", "transformers==4.57.3"
-            ])
-            print("✅ Transformers upgraded to 4.57.3")
+            print("📦 Gemma 4 detected - using Docker image transformers")
+            print("   Note: Gemma 4 support requires compatible Unsloth image")
         else:
             print("✅ Using Docker image transformers version")
 
@@ -66,7 +62,7 @@ def load_config():
     """Load training configuration from environment variables."""
     config = {
         # Model
-        "base_model": os.getenv("BASE_MODEL", "unsloth/gemma-4-E2B-it"),
+        "base_model": os.getenv("BASE_MODEL", "unsloth/Llama-3.2-3B-Instruct"),
         "max_seq_length": int(os.getenv("MAX_SEQ_LENGTH", "4096")),
         "load_in_4bit": os.getenv("LOAD_IN_4BIT", "true").lower() == "true",
 

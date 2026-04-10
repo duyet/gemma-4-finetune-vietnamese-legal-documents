@@ -165,15 +165,20 @@ uv run python scripts/local_train.py \
 **Option C: HuggingFace Jobs (Scalable, Production-Ready)** ⭐
 
 ```bash
-# Submit training job to HuggingFace infrastructure
-bash scripts/hf_jobs_submit.sh
+# Submit training job to HuggingFace infrastructure (two methods)
+
+# Method 1: Simplified uv run (recommended for Llama models)
+bash scripts/submit_hf_job.sh
+
+# Method 2: Direct environment config (for Gemma 4 or custom configs)
+bash scripts/submit_gemma4_job.sh
 
 # Monitor job
-huggingface-cli jobs list
-huggingface-cli jobs logs <job-id> --follow
+hf jobs ps
+hf jobs logs <job-id> --follow
 
 # Results auto-upload to your HF repo
-# https://huggingface.co/duyet/gemma-4-vi-legal-job-1
+# https://huggingface.co/duyet/gemma-4-E2B-vietnamese-legal
 ```
 
 **HF Jobs Benefits:**
@@ -182,6 +187,11 @@ huggingface-cli jobs logs <job-id> --follow
 - ✅ Auto-upload to HuggingFace Hub
 - ✅ Run multiple jobs in parallel
 - ✅ No Colab session timeout
+- ✅ Managed dependencies via uv or Docker
+
+**Submission Methods:**
+- **`submit_hf_job.sh`**: Uses `hf jobs uv run` with command-line arguments (simpler, follows Unsloth best practices)
+- **`submit_gemma4_job.sh`**: Uses environment variables for full control (better for Gemma 4 or custom configs)
 
 **See `hf_jobs/README.md` for detailed configuration**
 
@@ -189,18 +199,19 @@ huggingface-cli jobs logs <job-id> --follow
 | Platform | Hardware | VRAM | Cost | Time (324K) | Setup |
 |----------|----------|------|------|-------------|-------|
 | Colab | T4 (free) | 16GB | Free | ~5 hrs | Notebook |
-| HF Jobs | T4 (free) | 16GB | Free | ~5 hrs | `bash scripts/hf_jobs_submit.sh` |
-| HF Jobs | A100 | 40GB | $4/hr | ~2 hrs | `HARDWARE=a100.large` |
-| HF Jobs | H100 | 80GB | $7/hr | ~1 hr | `HARDWARE=h100` |
+| HF Jobs | T4 (free) | 16GB | Free | ~5 hrs | `bash scripts/submit_hf_job.sh` |
+| HF Jobs | A100 | 40GB | $4/hr | ~2 hrs | `HARDWARE=a100.large bash scripts/submit_hf_job.sh` |
+| HF Jobs | H100 | 80GB | $7/hr | ~1 hr | `HARDWARE=h100 bash scripts/submit_hf_job.sh` |
 | Local | Mac M1/M2/M3 | Shared | Free | ~16 hrs | `scripts/local_train.py` |
 | Local | NVIDIA 8GB | 8GB | Free | ~6 hrs | `--use-4bit` |
 
-**The notebook will:**
+**HF Jobs will:**
 - Auto-clone latest code from GitHub
-- Install all dependencies
-- Download dataset directly
-- Fine-tune Gemma 4 E2B (Stage 1: Pretrain, Stage 2: SFT)
+- Install all dependencies via uv or Docker
+- Download dataset directly from HuggingFace
+- Fine-tune model with LoRA
 - Export to GGUF format
+- Auto-upload to Hub
 
 **Note:** For Colab, push code changes to GitHub and re-run. For HF Jobs, just resubmit the job.
 
@@ -222,14 +233,14 @@ uv run python rag/pipeline.py --interactive \
 
 **Submit a job:**
 ```bash
-# Free tier (T4, 16GB VRAM)
-bash scripts/hf_jobs_submit.sh
+# Method 1: Simplified (recommended for Llama models)
+bash scripts/submit_hf_job.sh
+
+# Method 2: Full control (for Gemma 4 or custom configs)
+bash scripts/submit_gemma4_job.sh
 
 # Paid tier (A100, faster)
-HARDWARE=a100.large bash scripts/hf_jobs_submit.sh
-
-# Custom repo name
-HF_REPO_NAME=my-custom-job bash scripts/hf_jobs_submit.sh
+HARDWARE=a100.large bash scripts/submit_hf_job.sh
 ```
 
 **Monitor job:**
@@ -273,7 +284,9 @@ gemma-4-finetune-vietnamese-legal-documents/
 │   ├── git_sync.sh           # Dual GitHub + HF sync
 │   ├── colab_train.py        # Colab training script
 │   ├── local_train.py        # Local training script
-│   ├── hf_jobs_submit.sh     # Submit to HuggingFace Jobs
+│   ├── submit_hf_job.sh      # Submit HF Job (uv run)
+│   ├── submit_gemma4_job.sh  # Submit HF Job (Gemms 4)
+│   ├── hf_jobs_monitor.sh    # Monitor HF Jobs
 │   ├── setup_training_env.py # Setup training dependencies
 │   ├── download_hf_dataset.py
 │   ├── merge_datasets.py
@@ -283,7 +296,8 @@ gemma-4-finetune-vietnamese-legal-documents/
 │   └── setup_hf_repos.sh
 │
 ├── hf_jobs/                  # HuggingFace Jobs training
-│   ├── train.py              # Training script for HF Jobs
+│   ├── train.py              # Training script (env-based)
+│   ├── uv_train.py           # Training script (uv run)
 │   └── README.md             # HF Jobs documentation
 │
 ├── notebooks/                # Training notebooks
