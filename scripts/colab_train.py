@@ -133,7 +133,7 @@ def build_pretrain_corpus(dataset: Dataset) -> Dataset:
     """Build pretraining corpus from document dataset."""
     print("\n📝 Building pretraining corpus...")
 
-    messages = []
+    corpus_text = []
     for doc in dataset:
         # Try multiple content sources
         content = (
@@ -164,19 +164,16 @@ def build_pretrain_corpus(dataset: Dataset) -> Dataset:
             content = ". ".join(parts) if parts else doc.get('title', '')
 
         if content and len(content) > 20:  # Skip very short entries
-            # Format as messages for instruction-tuned model
-            messages.append([
-                {"role": "user", "content": content}
-            ])
+            corpus_text.append(content)
 
-    print(f"✅ Built corpus with {len(messages):,} documents")
+    print(f"✅ Built corpus with {len(corpus_text):,} documents")
 
     # Estimate tokens
-    total_chars = sum(len(m[0]["content"]) for m in messages)
+    total_chars = sum(len(t) for t in corpus_text)
     estimated_tokens = total_chars // 4  # Rough estimate: 4 chars per token
     print(f"📊 Estimated tokens: {estimated_tokens:,}")
 
-    return Dataset.from_dict({"messages": messages})
+    return Dataset.from_dict({"text": corpus_text})
 
 
 def train_pretrain(args, dataset: Dataset):
@@ -225,7 +222,6 @@ def train_pretrain(args, dataset: Dataset):
         bf16=torch.cuda.is_bf16_supported(),
         output_dir=args.output_dir,
         report_to="none",
-        remove_unused_columns=False,  # Keep the messages column
     )
 
     # Create trainer
@@ -233,7 +229,7 @@ def train_pretrain(args, dataset: Dataset):
         model=model,
         tokenizer=tokenizer,
         train_dataset=train_dataset,
-        dataset_text_field="messages",  # Use messages column for instruction-tuned model
+        dataset_text_field="text",
         max_seq_length=args.max_seq_length,
         args=training_args,
     )
