@@ -215,6 +215,137 @@ hf jobs logs <job-id> --follow
 
 **Note:** For Colab, push code changes to GitHub and re-run. For HF Jobs, just resubmit the job.
 
+### 4.5. HuggingFace Jobs - Detailed Guide
+
+**Two Submission Methods:**
+
+**Method 1: UV Run** (Recommended for Llama models)
+```bash
+bash scripts/submit_hf_job.sh
+```
+- Uses `hf jobs uv run` with command-line arguments
+- Follows Unsloth's official best practices
+- Cleaner, simpler approach
+- Works with models in Docker image
+
+**Method 2: Environment Variables** (For Gemma 4 or custom configs)
+```bash
+bash scripts/submit_gemma4_job.sh
+```
+- Uses `hf jobs run` with environment variables
+- More flexible for custom configurations
+- Better for Gemma 4 (when compatible Docker image available)
+
+**Choosing the Right Method:**
+| Use Case | Recommended Method |
+|----------|-------------------|
+| Training Llama 3.2 models | **Method 1: UV Run** |
+| Training Gemma 4 | **Method 2: Env** (when compatible image available) |
+| Standard configurations | **Method 1: UV Run** |
+| Custom hyperparameters | **Method 2: Env** |
+
+**Model Compatibility:**
+
+✅ **Works with Method 1 (UV Run):**
+- `unsloth/Llama-3.2-3B-Instruct`
+- `unsloth/Llama-3.2-1B-Instruct`
+- `unsloth/Llama-3.1-8B-Instruct`
+- `unsloth/Qwen2.5-7B-Instruct`
+- `LiquidAI/LFM2.5-1.2B-Instruct`
+
+⚠️ **May Require Method 2 (Env):**
+- `unsloth/gemma-4-E2B-it` (requires transformers >= 4.57.2)
+- `unsloth/gemma-4-9B-it` (requires transformers >= 4.57.2)
+
+> **Note:** As of 2025-01-10, the Unsloth Docker image (2026.4.4) has transformers 4.57.1 which doesn't support Gemma 4. Use Llama models for now, or wait for Unsloth to update the Docker image.
+
+**Hardware Options:**
+
+| Tier | VRAM | Cost | Speed | Command |
+|------|------|------|-------|---------|
+| `t4-medium` | 16GB | Free | 1x | Default |
+| `a100.small` | 40GB | ~$4/hr | 2.5x | `HARDWARE=a100.small bash scripts/submit_hf_job.sh` |
+| `a100.large` | 80GB | ~$7/hr | 5x | `HARDWARE=a100.large bash scripts/submit_hf_job.sh` |
+| `h100` | 80GB | ~$7/hr | 5x | `HARDWARE=h100 bash scripts/submit_hf_job.sh` |
+
+**VRAM Optimization:**
+
+| VRAM | Max Seq Length | Batch Size | Grad Accum |
+|------|----------------|------------|------------|
+| 16GB | 4096 | 2 | 4 |
+| 12GB | 4096 | 1 | 8 |
+| 8GB | 2048 | 1 | 8 |
+
+**Monitoring Jobs:**
+```bash
+# List all jobs
+hf jobs ps
+
+# View logs (follow)
+hf jobs logs <job-id> --follow
+
+# View job details
+hf jobs inspect <job-id>
+
+# Interactive monitoring
+bash scripts/hf_jobs_monitor.sh <job-id>
+```
+
+**Configuration:**
+
+Edit `scripts/submit_hf_job.sh` (Method 1) or `scripts/submit_gemma4_job.sh` (Method 2):
+
+```bash
+DATASET_NAME="duyet/vietnamese-legal-instruct"
+BASE_MODEL="unsloth/Llama-3.2-3B-Instruct"  # or "unsloth/gemma-4-E2B-it"
+OUTPUT_REPO="duyet/gemma-4-E2B-vietnamese-legal"
+HARDWARE="t4-medium"  # or "a100.small", "a100.large", "h100"
+
+# Training parameters
+MAX_SEQ_LENGTH=4096
+BATCH_SIZE=2
+GRADIENT_ACCUMULATION=4
+EPOCHS=1
+LEARNING_RATE=2e-4
+LORA_R=16
+LORA_ALPHA=16
+QUANTIZATION=q4_k_m  # q4_k_m, q5_k_m, q8_0
+```
+
+**Output and Results:**
+
+Auto-uploaded to: `https://huggingface.co/<username>/<repo-name>`
+
+Contents:
+- LoRA adapters
+- GGUF quantized models
+- Training metrics (`training_info.json`)
+- Model card and README
+
+**Download Results:**
+```bash
+git clone https://huggingface.co/duyet/gemma-4-E2B-vietnamese-legal
+```
+
+**Use Trained Model:**
+```python
+from unsloth import FastLanguageModel
+
+model, tokenizer = FastLanguageModel.from_pretrained(
+    "duyet/gemma-4-E2B-vietnamese-legal"
+)
+```
+
+**Troubleshooting:**
+
+| Issue | Fix |
+|-------|-----|
+| Out of Memory (OOM) | Reduce `MAX_SEQ_LENGTH` to 2048 or `BATCH_SIZE` to 1 |
+| Slow training | Upgrade hardware or reduce dataset size |
+| Authentication failed | Run `hf auth login` |
+| Gemma 4 not supported | Use Llama models or check Docker image compatibility |
+| Job not starting | Check `hf auth whoami` and verify repository access |
+
 ### 5. Deploy RAG Pipeline
 
 ```bash
