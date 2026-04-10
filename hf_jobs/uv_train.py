@@ -132,6 +132,15 @@ def main():
     )
     model.print_trainable_parameters()
 
+    # Ensure tokenizer has proper special tokens set
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token_id = tokenizer.eos_token_id
+
+    print(f"✅ Tokenizer EOS token: '{tokenizer.eos_token}' (ID: {tokenizer.eos_token_id})")
+    print(f"✅ Tokenizer PAD token: '{tokenizer.pad_token}' (ID: {tokenizer.pad_token_id})")
+
     # Training arguments
     training_args = SFTConfig(
         output_dir=output_dir,
@@ -147,6 +156,7 @@ def main():
         bf16=torch.cuda.is_bf16_supported(),
         report_to="none",
         remove_unused_columns=False,
+        processing_class=tokenizer,  # Explicitly set processing class
     )
 
     # Create trainer
