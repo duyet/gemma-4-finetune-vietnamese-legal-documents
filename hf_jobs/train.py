@@ -234,7 +234,6 @@ def train(config):
         fp16=not torch.cuda.is_bf16_supported(),
         bf16=torch.cuda.is_bf16_supported(),
         report_to="none",
-        remove_unused_columns=False,
     )
 
     # Create trainer
