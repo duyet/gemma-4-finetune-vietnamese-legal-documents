@@ -28,6 +28,10 @@ fi
 echo "✅ Authenticated"
 echo ""
 
+# Note: This method requires git clone because hf jobs run doesn't support
+# local script uploads like hf jobs uv run does. Use submit_hf_job.sh for
+# faster submission with uv run (recommended for Llama models).
+
 # Submit job using original train.py with full environment
 echo "📤 Submitting job..."
 

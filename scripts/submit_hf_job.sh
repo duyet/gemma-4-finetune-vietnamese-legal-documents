@@ -28,11 +28,16 @@ fi
 echo "✅ Authenticated"
 echo ""
 
+# Validate script exists
+SCRIPT_PATH="hf_jobs/uv_train.py"
+if [ ! -f "$SCRIPT_PATH" ]; then
+    echo "❌ Error: $SCRIPT_PATH not found"
+    echo "Run this script from the project root directory"
+    exit 1
+fi
+
 # Submit job using uv run with local script
 echo "📤 Submitting job..."
-
-# Use relative path from project root
-SCRIPT_PATH="hf_jobs/uv_train.py"
 
 hf jobs uv run "$SCRIPT_PATH" \
     --flavor "$HARDWARE" \
