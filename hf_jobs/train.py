@@ -156,7 +156,7 @@ def load_training_data(config, tokenizer):
 
     tokenizer = get_chat_template(
         tokenizer,
-        chat_template="llama",  # Llama-3.2 uses llama template
+        chat_template="llama-3",  # Llama-3.2 specific template
         mapping={"role": "role", "content": "content", "user": "user", "assistant": "assistant"},
     )
 
