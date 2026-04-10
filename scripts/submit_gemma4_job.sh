@@ -54,7 +54,7 @@ hf jobs run \
     --secrets "HF_TOKEN" \
     --detach \
     unsloth/unsloth \
-    bash -c "cd /workspace && git clone --depth 1 https://github.com/duyet/gemma-4-finetune-vietnamese-legal-documents.git && cd gemma-4-finetune-vietnamese-legal-documents && python hf_jobs/train.py"
+    bash -c "cd /workspace && git clone --depth 1 https://github.com/duyet/gemma-4-finetune-vietnamese-legal-documents.git && cd gemma-4-finetune-vietnamese-legal-documents && python hf_jobs/train_unsloth_native.py"
 
 echo ""
 echo "✅ Job submitted!"
