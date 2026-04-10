@@ -117,61 +117,59 @@ def load_training_data(data_dir: str) -> Dataset:
     print(f"\n📂 No local data found, loading from HuggingFace...")
     print("    This will download and cache the dataset (one-time operation)")
 
-    # Load metadata only (fast, no HTML merge needed)
-    print("   Loading metadata...")
-    metadata = load_dataset("th1nhng0/vietnamese-legal-documents", "metadata", split="data")
-    print(f"   ✅ Loaded {len(metadata):,} metadata records")
+    # Load dataset (metadata config)
+    print("   Loading dataset...")
+    dataset = load_dataset("duyet/vietnamese-legal-instruct", split="train")
+    print(f"   ✅ Loaded {len(dataset):,} examples")
 
-    # Convert to Dataset directly (no merge, no HTML)
-    # Training will work with metadata fields
-    dataset = metadata
-    print(f"✅ Loaded {len(dataset):,} documents from HuggingFace")
     return dataset
 
 
 def build_pretrain_corpus(dataset: Dataset) -> Dataset:
-    """Build pretraining corpus from document dataset."""
+    """Build pretraining corpus from instruction dataset."""
     print("\n📝 Building pretraining corpus...")
 
     corpus_text = []
-    for doc in dataset:
-        # Try multiple content sources
-        content = (
-            doc.get('content_html') or
-            doc.get('content_text', '') or
-            doc.get('content_markdown', '')
-        )
+    for example in dataset:
+        # Handle different dataset formats
+        if "instruction" in example and "output" in example:
+            # Instruction-output format
+            instruction = example.get("instruction", "")
+            output = example.get("output", "")
+            input_text = example.get("input", "")
 
-        # If no content, build from metadata fields
-        if not content or len(content) < 10:
-            # Build simple training text from metadata
             parts = []
-            if doc.get('title'):
-                parts.append(f"Title: {doc['title']}")
-            if doc.get('so_ky_hieu'):
-                parts.append(f"Số ký hiệu: {doc['so_ky_hieu']}")
-            if doc.get('loai_van_ban'):
-                parts.append(f"Loại văn bản: {doc['loai_van_ban']}")
-            if doc.get('ngay_ban_hanh'):
-                parts.append(f"Ngày ban hành: {doc['ngay_ban_hanh']}")
-            if doc.get('ngay_co_hieu_luc'):
-                parts.append(f"Ngày có hiệu lực: {doc['ngay_co_hieu_luc']}")
-            if doc.get('co_quan_ban_hanh'):
-                parts.append(f"Cơ quan ban hành: {doc['co_quan_ban_hanh']}")
-            if doc.get('linh_vuc'):
-                parts.append(f"Lĩnh vực: {doc['linh_vuc']}")
+            if input_text:
+                parts.append(f"Input: {input_text}")
+            if instruction:
+                parts.append(f"Instruction: {instruction}")
+            if output:
+                parts.append(f"Output: {output}")
 
-            content = ". ".join(parts) if parts else doc.get('title', '')
+            content = ". ".join(parts) if parts else instruction
+        elif "text" in example:
+            # Plain text format
+            content = example.get("text", "")
+        elif "messages" in example:
+            # Chat format
+            messages = example.get("messages", [])
+            # Extract user message
+            for msg in messages:
+                if msg.get("role") == "user":
+                    content = msg.get("content", "")
+                    break
+            else:
+                continue
 
-        if content and len(content) > 20:  # Skip very short entries
-            # Format for instruction-tuned model: user message format
+        if content and len(content) > 20:
+            # Format for instruction-tuned model
             corpus_text.append(f"<start_of_turn>user\n{content}<end_of_turn>\n")
 
-    print(f"✅ Built corpus with {len(corpus_text):,} documents")
+    print(f"✅ Built corpus with {len(corpus_text):,} examples")
 
     # Estimate tokens
     total_chars = sum(len(t) for t in corpus_text)
-    estimated_tokens = total_chars // 4  # Rough estimate: 4 chars per token
+    estimated_tokens = total_chars // 4
     print(f"📊 Estimated tokens: {estimated_tokens:,}")
 
     return Dataset.from_dict({"text": corpus_text})
