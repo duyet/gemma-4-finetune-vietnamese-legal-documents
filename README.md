@@ -1,6 +1,6 @@
-# Gemma 4 Vietnamese Legal Documents - RAG Pipeline
+# Gemma 4 Vietnamese Legal Documents - Fine-tuning Pipeline
 
-End-to-end pipeline to crawl Vietnamese legal documents, prepare datasets, and fine-tune Gemma 4 E2B for Retrieval-Augmented Generation (RAG).
+Fine-tune Gemma 4 E2B on Vietnamese legal documents for Retrieval-Augmented Generation (RAG).
 
 ## 🚀 Quick Start
 
@@ -130,17 +130,70 @@ uv run python crawler/playwright_crawler.py --stats
 uv run python crawler/playwright_crawler.py --workers 4
 ```
 
-### 4. Fine-tune on Colab (or Local)
+### 4. Fine-tune (Colab, Local, or HuggingFace Jobs)
 
-**On Colab (Recommended):**
+**Option A: On Colab (Free T4 GPU, 4-8 hrs)**
+
 - Upload `notebooks/Gemma4_Vietnamese_Legal_Finetune.ipynb`
 - Set configuration flags in first cell
 - Run all cells
 - Notebook automatically clones latest code from GitHub
 
-**Locally:**
-- Use the scripts in `scripts/` directory
-- See `CLAUDE.md` for development workflow
+**Option B: Locally (Mac M1/M2/M3 or NVIDIA GPU)**
+
+```bash
+# Install training dependencies
+uv sync --all-extras
+
+# Mac M1/M2/M3 (MPS acceleration)
+uv run python scripts/local_train.py \
+    --stage pretrain \
+    --max-seq-length 2048 \
+    --batch-size 1 \
+    --gradient-accumulation 8 \
+    --epochs 1
+
+# NVIDIA CUDA GPU (with 4-bit quantization)
+uv run python scripts/local_train.py \
+    --stage pretrain \
+    --use-4bit \
+    --max-seq-length 4096 \
+    --batch-size 2 \
+    --epochs 1
+```
+
+**Option C: HuggingFace Jobs (Scalable, Production-Ready)** ⭐
+
+```bash
+# Submit training job to HuggingFace infrastructure
+bash scripts/hf_jobs_submit.sh
+
+# Monitor job
+huggingface-cli jobs list
+huggingface-cli jobs logs <job-id> --follow
+
+# Results auto-upload to your HF repo
+# https://huggingface.co/duyet/gemma-4-vi-legal-job-1
+```
+
+**HF Jobs Benefits:**
+- ✅ Free T4 tier available
+- ✅ Scalable to A100/H100 (faster training)
+- ✅ Auto-upload to HuggingFace Hub
+- ✅ Run multiple jobs in parallel
+- ✅ No Colab session timeout
+
+**See `hf_jobs/README.md` for detailed configuration**
+
+**Expected performance:**
+| Platform | Hardware | VRAM | Cost | Time (324K) | Setup |
+|----------|----------|------|------|-------------|-------|
+| Colab | T4 (free) | 16GB | Free | ~5 hrs | Notebook |
+| HF Jobs | T4 (free) | 16GB | Free | ~5 hrs | `bash scripts/hf_jobs_submit.sh` |
+| HF Jobs | A100 | 40GB | $4/hr | ~2 hrs | `HARDWARE=a100.large` |
+| HF Jobs | H100 | 80GB | $7/hr | ~1 hr | `HARDWARE=h100` |
+| Local | Mac M1/M2/M3 | Shared | Free | ~16 hrs | `scripts/local_train.py` |
+| Local | NVIDIA 8GB | 8GB | Free | ~6 hrs | `--use-4bit` |
 
 **The notebook will:**
 - Auto-clone latest code from GitHub
@@ -149,7 +202,7 @@ uv run python crawler/playwright_crawler.py --workers 4
 - Fine-tune Gemma 4 E2B (Stage 1: Pretrain, Stage 2: SFT)
 - Export to GGUF format
 
-**No notebook updates needed** - just push code changes to GitHub and re-run!
+**Note:** For Colab, push code changes to GitHub and re-run. For HF Jobs, just resubmit the job.
 
 ### 5. Deploy RAG Pipeline
 
@@ -164,6 +217,42 @@ uv run python rag/pipeline.py --rebuild
 uv run python rag/pipeline.py --interactive \
     --model path/to/model.gguf
 ```
+
+### HuggingFace Jobs Quick Reference
+
+**Submit a job:**
+```bash
+# Free tier (T4, 16GB VRAM)
+bash scripts/hf_jobs_submit.sh
+
+# Paid tier (A100, faster)
+HARDWARE=a100.large bash scripts/hf_jobs_submit.sh
+
+# Custom repo name
+HF_REPO_NAME=my-custom-job bash scripts/hf_jobs_submit.sh
+```
+
+**Monitor job:**
+```bash
+# List all jobs
+huggingface-cli jobs list
+
+# Stream logs
+huggingface-cli jobs logs <job-id> --follow
+
+# View job details
+huggingface-cli jobs info <job-id>
+```
+
+**Job results:**
+- Auto-uploaded to: `https://huggingface.co/duyet/gemma-4-vi-legal-job-1`
+- Includes: LoRA adapters, GGUF export, training metrics
+- Can download via: `git clone https://huggingface.co/duyet/gemma-4-vi-legal-job-1`
+
+**Environment variables:** (see `scripts/hf_jobs_submit.sh`)
+- `BATCH_SIZE`, `MAX_SEQ_LENGTH`, `LEARNING_RATE`
+- `EPOCHS`, `LORA_R`, `LORA_ALPHA`
+- `QUANTIZATION` (q4_k_m, q5_k_m, q8_0)
 
 ## 🎯 Project Structure
 
@@ -182,12 +271,20 @@ gemma-4-finetune-vietnamese-legal-documents/
 │   ├── config.py             # Python config loader
 │   ├── config.sh             # Bash config loader
 │   ├── git_sync.sh           # Dual GitHub + HF sync
+│   ├── colab_train.py        # Colab training script
+│   ├── local_train.py        # Local training script
+│   ├── hf_jobs_submit.sh     # Submit to HuggingFace Jobs
+│   ├── setup_training_env.py # Setup training dependencies
 │   ├── download_hf_dataset.py
 │   ├── merge_datasets.py
 │   ├── process_documents.py
 │   ├── build_pretrain.py
 │   ├── upload_with_xet.py
 │   └── setup_hf_repos.sh
+│
+├── hf_jobs/                  # HuggingFace Jobs training
+│   ├── train.py              # Training script for HF Jobs
+│   └── README.md             # HF Jobs documentation
 │
 ├── notebooks/                # Training notebooks
 │   ├── Gemma4_Vietnamese_Legal_Finetune.ipynb  # Main Colab notebook
@@ -310,8 +407,8 @@ HF_REPO_NAME="your-repo-name"
 ## 📊 Dataset Details
 
 ### Source
-- **Primary**: [th1nhng0/vietnamese-legal-documents](https://huggingface.co/datasets/th1nhng0/vietnamese-legal-documents) (~150K docs from vbpl.vn)
-- **Additional**: Crawled from thuvienphapluat.vn (optional, via Playwright)
+- **Training Dataset**: [duyet/vietnamese-legal-instruct](https://huggingface.co/datasets/duyet/vietnamese-legal-instruct) - Instruction-tuning dataset for Vietnamese legal Q&A
+- **Reference Dataset**: [th1nhng0/vietnamese-legal-documents](https://huggingface.co/datasets/th1nhng0/vietnamese-legal-documents) (~150K docs from vbpl.vn) - for reference only
 
 ### Document Types
 - Luật (Laws)
@@ -437,7 +534,8 @@ The compiled dataset and code are released under **CC BY 4.0**.
 
 ## 🙏 Acknowledgments
 
-- Base dataset: [th1nhng0/vietnamese-legal-documents](https://huggingface.co/datasets/th1nhng0/vietnamese-legal-documents)
+- Training dataset: [duyet/vietnamese-legal-instruct](https://huggingface.co/datasets/duyet/vietnamese-legal-instruct) - Instruction-tuning dataset for Vietnamese legal Q&A
+- Reference dataset: [th1nhng0/vietnamese-legal-documents](https://huggingface.co/datasets/th1nhng0/vietnamese-legal-documents) (~150K docs from vbpl.vn) - for reference only
 - Source: [vbpl.vn](https://vbpl.vn) - Official Government Legal Document Portal
 - Additional source: [thuvienphapluat.vn](https://thuvienphapluat.vn)
 - Base model: [Google Gemma 4](https://blog.google/innovation-and-ai/technology/developers-tools/gemma/)

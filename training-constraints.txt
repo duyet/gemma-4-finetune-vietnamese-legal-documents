@@ -1,0 +1,13 @@
+# Training dependencies - compatible versions for Unsloth + Gemma 4
+# These versions are tested to work together
+
+# Core ML frameworks
+transformers==4.46.2
+trl==0.9.6
+accelerate==1.1.0
+bitsandbytes==0.43.1
+datasets==3.0.1
+peft==0.12.0
+
+# Unsloth (will be installed from GitHub)
+# Note: Unsloth requires these exact versions of trl and transformers

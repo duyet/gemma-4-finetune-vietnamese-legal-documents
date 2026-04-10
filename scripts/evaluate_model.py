@@ -32,7 +32,7 @@ def auto_detect_model_dir():
     import glob
 
     # Look for directories matching the pattern
-    pattern = "gemma-*-vi-legal-pretrain"
+    pattern = "gemma-*-vietnamese-legal"
     matches = glob.glob(pattern)
 
     if not matches:

@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """
-Colab training script for Gemma 4 Vietnamese Legal Documents.
+Local training script for Mac MPS or NVIDIA CUDA.
 
-This script handles the complete training pipeline:
-- Load dataset
-- Fine-tune Gemma 4 E2B with Unsloth
-- Save LoRA adapters
+This script handles training without Unsloth (which is CUDA-only).
+Supports Mac MPS acceleration for Apple Silicon.
 
 Usage:
-    python scripts/colab_train.py --stage pretrain --max-seq-length 4096 --batch-size 2
+    uv run python scripts/local_train.py --stage pretrain --max-seq-length 2048
 """
 
 import argparse
@@ -20,7 +18,13 @@ from datetime import datetime
 
 import torch
 from datasets import Dataset, load_dataset
-from unsloth import FastModel
+from transformers import (
+    AutoTokenizer,
+    AutoModelForCausalLM,
+    TrainingArguments,
+    BitsAndBytesConfig,
+)
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from trl import SFTTrainer, SFTConfig
 
 # Add project root to path
@@ -29,25 +33,25 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Train Gemma 4 for Vietnamese Legal RAG")
+    parser = argparse.ArgumentParser(description="Train Gemma 4 locally (Mac/CUDA)")
     parser.add_argument("--stage", type=str, default="pretrain", choices=["pretrain", "sft", "both"],
-                        help="Training stage: pretrain, sft, or both")
-    parser.add_argument("--data-dir", type=str, default="data/hf_downloaded",
-                        help="Directory containing training data")
-    parser.add_argument("--max-seq-length", type=int, default=4096,
-                        help="Maximum sequence length")
-    parser.add_argument("--batch-size", type=int, default=2,
+                        help="Training stage")
+    parser.add_argument("--max-seq-length", type=int, default=2048,
+                        help="Max sequence length (reduce to 2048 for Mac MPS)")
+    parser.add_argument("--batch-size", type=int, default=1,
                         help="Training batch size")
-    parser.add_argument("--gradient-accumulation", type=int, default=4,
+    parser.add_argument("--gradient-accumulation", type=int, default=8,
                         help="Gradient accumulation steps")
     parser.add_argument("--learning-rate", type=float, default=2e-4,
                         help="Learning rate")
     parser.add_argument("--epochs", type=int, default=1,
-                        help="Number of training epochs")
+                        help="Number of epochs")
     parser.add_argument("--output-dir", type=str, default=None,
-                        help="Output directory for LoRA adapters (auto-generated from base model if not set)")
-    parser.add_argument("--base-model", type=str, default="unsloth/gemma-4-E2B-it",
-                        help="Base model to fine-tune")
+                        help="Output directory (auto-generated if not set)")
+    parser.add_argument("--base-model", type=str, default="google/gemma-4-2b-it",
+                        help="Base model (use official Gemma 4 for local training)")
+    parser.add_argument("--use-4bit", action="store_true", default=False,
+                        help="Use 4-bit quantization (CUDA only, not MPS)")
     parser.add_argument("--lora-r", type=int, default=16,
                         help="LoRA rank")
     parser.add_argument("--lora-alpha", type=int, default=16,
@@ -58,71 +62,55 @@ def parse_args():
 
 
 def get_output_dir(args) -> str:
-    """Generate output directory name from base model."""
+    """Generate output directory name."""
     if args.output_dir:
         return args.output_dir
 
     # Extract model name from path
-    # unsloth/gemma-4-E2B-it -> gemma-4-E2B-vietnamese-legal
+    # google/gemma-4-2b-it -> gemma-4-2b-vietnamese-legal
     model_name = args.base_model.split('/')[-1]
     # Remove -it suffix if present
     model_name = model_name.replace('-it', '')
     return f"{model_name}-vietnamese-legal"
 
 
-def check_gpu():
-    """Check if GPU is available and show info."""
-    if not torch.cuda.is_available():
-        print("\n" + "="*60)
-        print("⚠️  ERROR: NO GPU DETECTED!")
-        print("="*60)
-        print("\nYou need to enable GPU in Colab:")
-        print("1. Runtime → Change runtime type")
-        print("2. Select 'T4 GPU'")
-        print("3. Click Save")
-        print("4. Runtime → Restart session")
-        print("\nTraining cannot continue without GPU.")
-        print("="*60)
-        sys.exit(1)
+def check_device():
+    """Check available device and show info."""
+    print("\n" + "="*60)
+    print("DEVICE CHECK")
+    print("="*60)
 
-    print(f"\n✅ GPU: {torch.cuda.get_device_name(0)}")
-    vram_gb = torch.cuda.get_device_properties(0).total_memory / 1024**3
-    print(f"✅ VRAM: {vram_gb:.1f} GB")
+    if torch.cuda.is_available():
+        device = "cuda"
+        print(f"✅ CUDA GPU: {torch.cuda.get_device_name(0)}")
+        vram_gb = torch.cuda.get_device_properties(0).total_memory / 1024**3
+        print(f"✅ VRAM: {vram_gb:.1f} GB")
+        use_4bit = vram_gb < 12
+    elif torch.backends.mps.is_available():
+        device = "mps"
+        print(f"✅ MPS (Mac Metal): Available")
+        print(f"   Apple Silicon GPU detected")
+        use_4bit = False  # MPS doesn't support 4-bit well
+        print(f"⚠️  Note: Using float16 for MPS (4-bit not well supported)")
+    else:
+        device = "cpu"
+        print(f"⚠️  No GPU detected - training on CPU will be SLOW")
+        use_4bit = False
 
-    if vram_gb < 12:
-        print(f"\n⚠️  WARNING: Low VRAM detected")
-        print(f"   Recommended: --batch-size 1 --max-seq-length 2048")
+    return device, use_4bit
 
 
-def load_training_data(data_dir: str) -> Dataset:
-    """Load training dataset from HF format or processed data."""
-    data_path = Path(data_dir)
+def load_training_data() -> Dataset:
+    """Load training dataset from HuggingFace."""
+    print("\n" + "="*60)
+    print("LOADING DATASET")
+    print("="*60)
 
-    # Try loading from HF dataset format first
-    if (data_path / "dataset_info.json").exists():
-        print(f"\n📂 Loading dataset from {data_dir}")
-        dataset = load_dataset(str(data_path), split="train")
-        print(f"✅ Loaded {len(dataset):,} examples")
-        return dataset
+    print(f"\n📂 Loading dataset from HuggingFace...")
+    print("   Dataset: duyet/vietnamese-legal-instruct")
 
-    # Try loading from processed parquet
-    parquet_files = list(data_path.glob("**/*.parquet"))
-    if parquet_files:
-        print(f"\n📂 Loading from parquet files")
-        import pandas as pd
-        dfs = [pd.read_parquet(f) for f in parquet_files]
-        df = pd.concat(dfs, ignore_index=True)
-        print(f"✅ Loaded {len(df):,} documents")
-        return Dataset.from_pandas(df)
-
-    # If no local data, load directly from HuggingFace
-    print(f"\n📂 No local data found, loading from HuggingFace...")
-    print("    This will download and cache the dataset (one-time operation)")
-
-    # Load dataset (metadata config)
-    print("   Loading dataset...")
     dataset = load_dataset("duyet/vietnamese-legal-instruct", split="train")
-    print(f"   ✅ Loaded {len(dataset):,} examples")
+    print(f"✅ Loaded {len(dataset):,} examples")
 
     return dataset
 
@@ -157,7 +145,6 @@ def build_pretrain_corpus(dataset: Dataset) -> Dataset:
 
         # Fallback: handle instruction-output format
         elif "instruction" in example and "output" in example:
-            # Instruction-output format
             instruction = example.get("instruction", "")
             output = example.get("output", "")
             input_text = example.get("input", "")
@@ -171,11 +158,11 @@ def build_pretrain_corpus(dataset: Dataset) -> Dataset:
                 parts.append(f"Output: {output}")
 
             content = ". ".join(parts) if parts else instruction
+
         elif "text" in example:
-            # Plain text format
             content = example.get("text", "")
+
         elif "messages" in example:
-            # Chat format (alt name)
             messages = example.get("messages", [])
             for msg in messages:
                 if msg.get("role") == "user":
@@ -189,7 +176,6 @@ def build_pretrain_corpus(dataset: Dataset) -> Dataset:
 
     print(f"✅ Built corpus with {len(corpus_text):,} examples")
 
-    # Estimate tokens
     total_chars = sum(len(t) for t in corpus_text)
     estimated_tokens = total_chars // 4
     print(f"📊 Estimated tokens: {estimated_tokens:,}")
@@ -197,41 +183,76 @@ def build_pretrain_corpus(dataset: Dataset) -> Dataset:
     return Dataset.from_dict({"text": corpus_text})
 
 
-def train_pretrain(args, dataset: Dataset):
+def train_pretrain(args, dataset, device, use_4bit):
     """Train continued pretraining stage."""
     print("\n" + "="*60)
     print("STAGE 1: CONTINUED PRETRAINING")
     print("="*60)
+    print(f"Device: {device}")
+    print(f"4-bit quantization: {use_4bit}")
 
     # Build corpus
     train_dataset = build_pretrain_corpus(dataset)
 
+    # Load tokenizer
+    print(f"\n🤖 Loading tokenizer: {args.base_model}")
+    tokenizer = AutoTokenizer.from_pretrained(args.base_model, trust_remote_code=True)
+
+    # Add pad token if needed
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
     # Load model
-    print(f"\n🤖 Loading model: {args.base_model}")
-    model, tokenizer = FastModel.from_pretrained(
-        model_name=args.base_model,
-        max_seq_length=args.max_seq_length,
-        dtype=None,
-        load_in_4bit=True,
-    )
+    print(f"🤖 Loading model: {args.base_model}")
+
+    if use_4bit and device == "cuda":
+        # 4-bit quantization for CUDA
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=torch.float16,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type="nf4",
+        )
+        model = AutoModelForCausalLM.from_pretrained(
+            args.base_model,
+            quantization_config=bnb_config,
+            device_map="auto",
+            trust_remote_code=True,
+        )
+        model = prepare_model_for_kbit_training(model)
+    else:
+        # Full precision or float16 for MPS/CPU
+        model = AutoModelForCausalLM.from_pretrained(
+            args.base_model,
+            torch_dtype=torch.float16 if device in ["cuda", "mps"] else torch.float32,
+            device_map="auto" if device == "cuda" else None,
+            trust_remote_code=True,
+        )
+        if device == "mps":
+            model = model.to("mps")
+
     print("✅ Model loaded")
 
     # Configure LoRA
-    model = FastModel.get_peft_model(
-        model,
+    lora_config = LoraConfig(
         r=args.lora_r,
+        lora_alpha=args.lora_alpha,
+        lora_dropout=args.lora_dropout,
         target_modules=[
             "q_proj", "k_proj", "v_proj", "o_proj",
             "gate_proj", "up_proj", "down_proj",
         ],
-        lora_alpha=args.lora_alpha,
-        lora_dropout=args.lora_dropout,
-        use_gradient_checkpointing="unsloth",
+        bias="none",
+        task_type="CAUSAL_LM",
     )
+
+    model = get_peft_model(model, lora_config)
+    model.print_trainable_parameters()
     print(f"✅ LoRA configured (r={args.lora_r}, alpha={args.lora_alpha})")
 
     # Training config
-    training_args = SFTConfig(
+    training_args = TrainingArguments(
+        output_dir=args.output_dir,
         per_device_train_batch_size=args.batch_size,
         gradient_accumulation_steps=args.gradient_accumulation,
         num_train_epochs=args.epochs,
@@ -239,10 +260,10 @@ def train_pretrain(args, dataset: Dataset):
         logging_steps=10,
         save_steps=100,
         save_total_limit=2,
-        fp16=not torch.cuda.is_bf16_supported(),
-        bf16=torch.cuda.is_bf16_supported(),
-        output_dir=args.output_dir,
+        fp16=device in ["cuda", "mps"],
+        use_mps_backend=(device == "mps"),
         report_to="none",
+        save_safetensors=True,
     )
 
     # Create trainer
@@ -252,7 +273,18 @@ def train_pretrain(args, dataset: Dataset):
         train_dataset=train_dataset,
         dataset_text_field="text",
         max_seq_length=args.max_seq_length,
-        args=training_args,
+        args=SFTConfig(
+            per_device_train_batch_size=args.batch_size,
+            gradient_accumulation_steps=args.gradient_accumulation,
+            num_train_epochs=args.epochs,
+            learning_rate=args.learning_rate,
+            logging_steps=10,
+            save_steps=100,
+            save_total_limit=2,
+            fp16=device in ["cuda", "mps"],
+            report_to="none",
+            output_dir=args.output_dir,
+        ),
     )
 
     # Train
@@ -261,6 +293,11 @@ def train_pretrain(args, dataset: Dataset):
     print(f"   Seq length: {args.max_seq_length}")
     print(f"   Epochs: {args.epochs}")
     print(f"   Learning rate: {args.learning_rate}")
+    print(f"   Device: {device}")
+
+    if device == "cpu":
+        print("\n⚠️  WARNING: Training on CPU will be VERY slow!")
+        print("   Consider using Colab with free T4 GPU instead")
 
     trainer.train()
 
@@ -281,6 +318,7 @@ def train_pretrain(args, dataset: Dataset):
     info = {
         "stage": "pretrain",
         "base_model": args.base_model,
+        "device": device,
         "max_seq_length": args.max_seq_length,
         "batch_size": args.batch_size,
         "gradient_accumulation": args.gradient_accumulation,
@@ -301,50 +339,37 @@ def train_pretrain(args, dataset: Dataset):
     return model, tokenizer
 
 
-def train_sft(args, dataset: Dataset):
-    """Train SFT stage for RAG."""
-    print("\n" + "="*60)
-    print("STAGE 2: SFT FOR RAG")
-    print("="*60)
-    print("⚠️  SFT stage not yet implemented")
-    print("   This would fine-tune on Q&A pairs with retrieved context")
-    return None, None
-
-
 def main():
     args = parse_args()
-
-    # Generate output directory from base model if not specified
     args.output_dir = get_output_dir(args)
 
     print("="*60)
-    print("🚀 GEMMA 4 VIETNAMESE LEGAL TRAINING")
+    print("🚀 GEMMA 4 VIETNAMESE LEGAL - LOCAL TRAINING")
     print("="*60)
     print(f"Stage: {args.stage}")
     print(f"Base Model: {args.base_model}")
-    print(f"Data Dir: {args.data_dir}")
     print(f"Output: {args.output_dir}")
     print("="*60)
 
-    # Check GPU
-    check_gpu()
+    # Check device
+    device, use_4bit = check_device()
+
+    # Override 4bit if requested and supported
+    if args.use_4bit and device == "cuda":
+        use_4bit = True
+    elif args.use_4bit and device != "cuda":
+        print("\n⚠️  4-bit quantization only works with CUDA, disabling...")
+        use_4bit = False
 
     # Load dataset
-    dataset = load_training_data(args.data_dir)
+    dataset = load_training_data()
 
-    # Train based on stage
+    # Train
     model = None
     tokenizer = None
 
     if args.stage in ["pretrain", "both"]:
-        model, tokenizer = train_pretrain(args, dataset)
-
-    if args.stage in ["sft", "both"]:
-        # For SFT, we would load the pretrain checkpoint first
-        if args.stage == "both":
-            # Continue from pretrain
-            pass
-        model, tokenizer = train_sft(args, dataset)
+        model, tokenizer = train_pretrain(args, dataset, device, use_4bit)
 
     print("\n" + "="*60)
     print("✅ TRAINING COMPLETE")

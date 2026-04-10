@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 """
-Download and prepare existing HuggingFace dataset.
+Download reference dataset from HuggingFace.
 
-This script:
-1. Downloads th1nhng0/vietnamese-legal-documents from HF
-2. Converts to our format
-3. Splits into passages
-4. Prepares for training
+This script downloads th1nhng0/vietnamese-legal-documents (~150K docs from vbpl.vn)
+for reference and comparison purposes.
+
+Note: The main training dataset is duyet/vietnamese-legal-instruct, which is loaded
+directly by scripts/colab_train.py during training.
+
+This reference dataset can be used for:
+- Comparison with crawled data
+- Extended corpus building
+- Analysis and validation
 """
 
 import json
@@ -28,9 +33,10 @@ def main(output: str, split: str):
     output_path.mkdir(parents=True, exist_ok=True)
 
     print("=" * 60)
-    print("Downloading Vietnamese Legal Documents from HuggingFace")
+    print("Downloading Reference Dataset from HuggingFace")
     print("=" * 60)
-    print(f"\nSource: th1nhng0/vietnamese-legal-documents")
+    print(f"\nSource: th1nhng0/vietnamese-legal-documents (reference only)")
+    print(f"Training dataset: duyet/vietnamese-legal-instruct (auto-loaded)")
     print(f"Output: {output_path}")
 
     # Download metadata and content configs

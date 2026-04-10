@@ -33,7 +33,7 @@ def auto_detect_model_dir():
     import glob
 
     # Look for directories matching the pattern
-    pattern = "gemma-*-vi-legal-pretrain"
+    pattern = "gemma-*-vietnamese-legal"
     matches = glob.glob(pattern)
 
     if not matches:
@@ -43,7 +43,7 @@ def auto_detect_model_dir():
         )
 
     # Sort by modification time, get the latest
-    latest = max(matches, key=lambda p: Path(p).stat().st_mtime)
+    latest = max(matches, key=lambda p: Path(p).st_mtime)
     print(f"🔍 Auto-detected model directory: {latest}")
     return latest
 
@@ -53,9 +53,9 @@ def get_output_dir(args) -> str:
     if args.output_dir:
         return args.output_dir
 
-    # gemma-4-E2B-it-vi-legal-pretrain -> gemma-4-E2B-it-vi-legal-gguf
+    # gemma-4-E2B-vietnamese-legal -> gemma-4-E2B-vietnamese-legal-gguf
     model_dir_name = Path(args.model_dir).name
-    return model_dir_name.replace("-pretrain", "-gguf")
+    return f"{model_dir_name}-gguf"
 
 
 def export_to_gguf(args):
