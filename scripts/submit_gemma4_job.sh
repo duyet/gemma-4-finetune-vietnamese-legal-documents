@@ -6,8 +6,8 @@ set -e
 
 # Configuration
 DATASET_NAME="duyet/vietnamese-legal-instruct"
-BASE_MODEL="unsloth/gemma-4-E2B-it"
-OUTPUT_REPO="duyet/gemma-4-E2B-vietnamese-legal"
+BASE_MODEL="unsloth/Llama-3.2-3B-Instruct"  # Changed from gemma-4-E2B-it due to transformers 4.57.1 incompatibility
+OUTPUT_REPO="duyet/llama-3-2-3b-vietnamese-legal"  # Updated output repo name
 HARDWARE="${HARDWARE:-t4-medium}"  # Free tier
 
 echo "🚀 Submitting Gemma 4 Training Job"
