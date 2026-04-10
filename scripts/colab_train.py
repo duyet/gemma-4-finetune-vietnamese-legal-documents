@@ -164,7 +164,8 @@ def build_pretrain_corpus(dataset: Dataset) -> Dataset:
             content = ". ".join(parts) if parts else doc.get('title', '')
 
         if content and len(content) > 20:  # Skip very short entries
-            corpus_text.append(content)
+            # Format for instruction-tuned model: user message format
+            corpus_text.append(f"<start_of_turn>user\n{content}<end_of_turn>\n")
 
     print(f"✅ Built corpus with {len(corpus_text):,} documents")
 
