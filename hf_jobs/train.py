@@ -167,8 +167,10 @@ def load_training_data(config, tokenizer):
                 if msg.get("role") and msg.get("content")
             ]
             if filtered_msgs:
-                messages_list.append({"messages": filtered_msgs})
-        return messages_list
+                messages_list.append(filtered_msgs)
+            else:
+                messages_list.append([])
+        return {"messages": messages_list}
 
     # Format to messages
     print("Formatting to messages format...")
