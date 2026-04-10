@@ -136,51 +136,34 @@ def train(config):
     # This helps when HuggingFace hub is unreachable from HF Jobs
     os.environ['UNSLOTH_USE_MODELSCOPE'] = '1'
 
-    # Load model with retry logic for HF connectivity issues
+    # Load model with simplified approach
     print(f"\n🤖 Loading model: {config['base_model']}")
     print("   (Using ModelScope fallback for better connectivity)")
 
     import time
-    max_retries = 2  # Reduce retries since we'll try local first
+    max_retries = 2
 
-    # First, try with local_files_only to use cached models
-    try:
-        print("   Trying local cached model first...")
-        model, tokenizer = FastLanguageModel.from_pretrained(
-            model_name=config["base_model"],
-            max_seq_length=config["max_seq_length"],
-            dtype=None,
-            load_in_4bit=config["load_in_4bit"],
-            local_files_only=True,
-            token=os.environ.get("HF_TOKEN"),
-        )
-        print("✅ Model loaded from cache")
-    except (OSError, ValueError) as e:
-        print(f"   Local model not found: {type(e).__name__}")
-        print("   Downloading from ModelScope...")
-
-        for attempt in range(max_retries):
-            try:
-                model, tokenizer = FastLanguageModel.from_pretrained(
-                    model_name=config["base_model"],
-                    max_seq_length=config["max_seq_length"],
-                    dtype=None,
-                    load_in_4bit=config["load_in_4bit"],
-                    local_files_only=False,
-                    token=os.environ.get("HF_TOKEN"),
-                )
-                print("✅ Model loaded")
-                break
-            except TimeoutError as err:
-                if attempt < max_retries - 1:
-                    wait_time = 60  # Fixed 60s wait
-                    print(f"⚠️  Connection timeout (attempt {attempt + 1}/{max_retries})")
-                    print(f"   Waiting {wait_time}s before retry...")
-                    time.sleep(wait_time)
-                else:
-                    print("❌ All download attempts failed")
-                    raise TimeoutError(f"Failed to load model after {max_retries} attempts. "
-                                      "The model hub may be temporarily unavailable.") from err
+    for attempt in range(max_retries):
+        try:
+            model, tokenizer = FastLanguageModel.from_pretrained(
+                model_name=config["base_model"],
+                max_seq_length=config["max_seq_length"],
+                dtype=None,
+                load_in_4bit=config["load_in_4bit"],
+                token=os.environ.get("HF_TOKEN"),
+            )
+            print("✅ Model loaded")
+            break
+        except Exception as e:
+            if attempt < max_retries - 1:
+                wait_time = 60
+                print(f"⚠️  Model loading failed: {type(e).__name__}")
+                print(f"   Retrying in {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                print(f"❌ Failed to load model after {max_retries} attempts")
+                print(f"   Error: {e}")
+                raise e
 
     # Set special tokens
     if tokenizer.pad_token is None:
