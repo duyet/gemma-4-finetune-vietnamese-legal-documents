@@ -90,12 +90,13 @@ def format_dataset_to_text(dataset, tokenizer):
 
     def tokenize_function(examples):
         """Tokenize text for causal LM training."""
-        # Tokenize with truncation and padding to max_length
+        # Tokenize with truncation - no padding here
+        # DataCollatorForLanguageModeling will handle dynamic padding per batch
         tokenized = tokenizer(
             examples["text"],
             truncation=True,
             max_length=4096,
-            padding="max_length",  # Pad all sequences to max_length for uniform tensor shapes
+            padding=False,  # No padding - collator will pad per batch
             return_tensors=None,  # Return lists for dataset.map
         )
         # For causal LM, labels are the same as input_ids
@@ -190,14 +191,15 @@ def train(config):
         bf16=torch.cuda.is_bf16_supported(),
         report_to="none",
         save_strategy="steps",
-        remove_unused_columns=False,  # Keep 'text' column for causal LM
+        remove_unused_columns=False,  # Keep all columns since dataset only has tokenized data
     )
 
-    # Data collator
+    # Data collator with dynamic padding per batch
     data_collator = DataCollatorForLanguageModeling(
         tokenizer=tokenizer,
         mlm=False,
-        pad_to_multiple_of=8,
+        pad_to_multiple_of=8,  # Pad sequences to multiple of 8 for efficiency
+        padding="longest",  # Pad to longest sequence in each batch
     )
 
     # Create trainer
