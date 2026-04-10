@@ -242,15 +242,15 @@ def train(config):
         bf16=torch.cuda.is_bf16_supported(),
         report_to="none",
         remove_unused_columns=False,
+        max_seq_length=config["max_seq_length"],
+        dataset_text_field="text",
     )
 
     # Create trainer
     trainer = SFTTrainer(
         model=model,
-        train_dataset=train_dataset,
-        dataset_text_field="text",
-        max_seq_length=config["max_seq_length"],
         args=training_args,
+        train_dataset=train_dataset,
     )
 
     # Train
