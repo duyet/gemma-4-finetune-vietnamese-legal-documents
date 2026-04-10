@@ -89,18 +89,11 @@ def main():
 
     print(f"✅ Loaded {len(train_dataset):,} examples")
 
-    # Configure chat template
-    print("\n📝 Configuring chat template...")
-    from unsloth.chat_templates import get_chat_template
-
-    tokenizer = get_chat_template(
-        tokenizer,
-        chat_template="llama-3",  # Llama-3.2 specific template
-        mapping={"role": "role", "content": "content", "user": "user", "assistant": "assistant"},
-    )
+    # Format conversations using built-in tokenizer chat template
+    print("\n📝 Formatting conversations...")
 
     def format_conversations(examples):
-        """Format conversations using chat template."""
+        """Format conversations using model's built-in chat template."""
         convos = examples["conversations"]
         texts = [
             tokenizer.apply_chat_template(
