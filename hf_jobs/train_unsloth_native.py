@@ -132,8 +132,13 @@ def train(config):
     print(f"LoRA: r={config['lora_r']}, alpha={config['lora_alpha']}")
     print("="*60)
 
+    # Enable modelscope fallback for HF connectivity issues
+    # This helps when HuggingFace hub is unreachable from HF Jobs
+    os.environ['UNSLOTH_USE_MODELSCOPE'] = '1'
+
     # Load model with retry logic for HF connectivity issues
     print(f"\n🤖 Loading model: {config['base_model']}")
+    print("   (Using ModelScope fallback for better connectivity)")
 
     import time
     max_retries = 3
@@ -151,7 +156,7 @@ def train(config):
         except TimeoutError as e:
             if attempt < max_retries - 1:
                 wait_time = (attempt + 1) * 30
-                print(f"⚠️  HF connection timeout (attempt {attempt + 1}/{max_retries})")
+                print(f"⚠️  Connection timeout (attempt {attempt + 1}/{max_retries})")
                 print(f"   Waiting {wait_time}s before retry...")
                 time.sleep(wait_time)
             else:
