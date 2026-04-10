@@ -59,11 +59,24 @@ hf jobs run \
 echo ""
 echo "✅ Job submitted!"
 echo ""
-echo "📊 Monitor job:"
-echo "   hf jobs ps"
-echo ""
-echo "📋 View logs:"
-echo "   hf jobs logs <job-id> --follow"
-echo ""
-echo "📦 Results will be at:"
-echo "   https://huggingface.co/$HF_USERNAME/$HF_REPO_NAME"
+echo "Capturing full job ID..."
+sleep 2
+
+# Get all jobs to find our submitted job
+JOB_INFO=$(hf jobs ps 2>&1 | grep "unsloth/unsloth" | head -1)
+if [ -n "$JOB_INFO" ]; then
+    JOB_ID=$(echo "$JOB_INFO" | awk '{print $1}')
+    echo "Job ID: $JOB_ID"
+    echo ""
+    echo "📊 Monitor job:"
+    echo "   hf jobs inspect $JOB_ID"
+    echo ""
+    echo "📋 View logs:"
+    echo "   hf jobs logs $JOB_ID --follow"
+    echo ""
+    echo "📦 Results will be at:"
+    echo "   https://huggingface.co/$HF_USERNAME/$HF_REPO_NAME"
+else
+    echo "⚠️  Could not find job in list. Check:"
+    echo "   https://huggingface.co/jobs"
+fi
