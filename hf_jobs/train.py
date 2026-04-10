@@ -105,10 +105,15 @@ def load_dataset(config):
     print(f"\n📂 Dataset: {config['dataset_name']}")
     print(f"   Split: {config['dataset_split']}")
 
-    dataset = load_dataset(
-        config["dataset_name"],
-        split=config["dataset_split"]
-    )
+    # Load dataset with newer API
+    raw_dataset = load_dataset(config["dataset_name"])
+
+    # Get the specified split
+    if config["dataset_split"] in raw_dataset:
+        dataset = raw_dataset[config["dataset_split"]]
+    else:
+        # Default to train split if specified split doesn't exist
+        dataset = raw_dataset["train"]
 
     print(f"✅ Loaded {len(dataset):,} examples")
 
