@@ -95,12 +95,12 @@ def main():
 
     tokenizer = get_chat_template(
         tokenizer,
-        chat_template="gemma",
-        mapping={"role": "role", "content": "content", "user": "user", "assistant": "model"},
+        chat_template="llama",  # Llama-3.2 uses llama template
+        mapping={"role": "role", "content": "content", "user": "user", "assistant": "assistant"},
     )
 
     def format_conversations(examples):
-        """Format conversations using Gemma chat template."""
+        """Format conversations using chat template."""
         convos = examples["conversations"]
         texts = [
             tokenizer.apply_chat_template(
