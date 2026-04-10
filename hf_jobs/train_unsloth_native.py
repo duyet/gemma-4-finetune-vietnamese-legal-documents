@@ -90,12 +90,12 @@ def format_dataset_to_text(dataset, tokenizer):
 
     def tokenize_function(examples):
         """Tokenize text for causal LM training."""
-        # Tokenize with truncation and padding
+        # Tokenize with truncation and padding to max_length
         tokenized = tokenizer(
             examples["text"],
             truncation=True,
             max_length=4096,
-            padding=False,  # Dynamic padding in collator
+            padding="max_length",  # Pad all sequences to max_length for uniform tensor shapes
             return_tensors=None,  # Return lists for dataset.map
         )
         # For causal LM, labels are the same as input_ids
