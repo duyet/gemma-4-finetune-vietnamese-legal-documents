@@ -237,11 +237,12 @@ def train(config):
         remove_unused_columns=False,
     )
 
-    # Create trainer
+    # Create trainer with explicit processing_class
     trainer = SFTTrainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
+        processing_class=tokenizer,
     )
 
     # Train
