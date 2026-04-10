@@ -124,7 +124,7 @@ def check_gpu():
     return device
 
 
-def load_training_data(config):
+def load_training_data(config, tokenizer):
     """Load and prepare training dataset."""
     print("\n" + "="*60)
     print("LOADING DATASET")
@@ -146,29 +146,35 @@ def load_training_data(config):
 
     print(f"✅ Loaded {len(dataset):,} examples")
 
-    # Build training corpus from conversations format
-    print("\n📝 Building training corpus...")
+    # Configure chat template for Gemma 4
+    print("\n📝 Configuring Gemma 4 chat template...")
+    from unsloth.chat_templates import get_chat_template
 
-    # Keep conversations in original format for Unsloth
-    conversations_data = []
-    for example in dataset:
-        if "conversations" in example:
-            conversations = example["conversations"]
-            # Filter out empty messages
-            filtered_convs = [
-                msg for msg in conversations
-                if msg.get("role") and msg.get("content")
-            ]
-            if filtered_convs:
-                conversations_data.append({
-                    "conversations": filtered_convs
-                })
+    tokenizer = get_chat_template(
+        tokenizer,
+        chat_template="gemma",
+        mapping={"role": "role", "content": "content", "user": "user", "assistant": "model"},
+    )
 
-    print(f"✅ Built corpus with {len(conversations_data):,} examples")
+    def format_conversations(examples):
+        """Format conversations using Gemma 4 chat template."""
+        convos = examples["conversations"]
+        texts = [
+            tokenizer.apply_chat_template(
+                convo,
+                tokenize=False,
+                add_generation_prompt=False
+            ) for convo in convos
+        ]
+        return {"text": texts}
 
-    # Return as HF dataset with conversations
-    from datasets import Dataset as HFDataset
-    return HFDataset.from_list(conversations_data)
+    # Apply formatting
+    print("Formatting conversations...")
+    dataset = dataset.map(format_conversations, batched=True, remove_columns=["conversations"])
+
+    print(f"✅ Formatted {len(dataset):,} examples")
+
+    return dataset
 
 
 def train(config):
@@ -183,10 +189,7 @@ def train(config):
     print(f"LoRA: r={config['lora_r']}, alpha={config['lora_alpha']}")
     print("="*60)
 
-    # Load dataset
-    train_dataset = load_training_data(config)
-
-    # Load model with Unsloth
+    # Load model with Unsloth first
     print(f"\n🤖 Loading model: {config['base_model']}")
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=config["base_model"],
@@ -195,6 +198,9 @@ def train(config):
         load_in_4bit=config["load_in_4bit"],
     )
     print("✅ Model loaded")
+
+    # Load dataset with tokenizer
+    train_dataset = load_training_data(config, tokenizer)
 
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
@@ -234,6 +240,7 @@ def train(config):
         model=model,
         tokenizer=tokenizer,
         train_dataset=train_dataset,
+        dataset_text_field="text",
         max_seq_length=config["max_seq_length"],
         args=training_args,
     )
