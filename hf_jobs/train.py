@@ -150,28 +150,15 @@ def load_training_data(config, tokenizer):
 
     print(f"✅ Loaded {len(dataset):,} examples")
 
-    # Format conversations using built-in tokenizer chat template
-    print("\n📝 Formatting conversations...")
+    # Rename conversations to messages for TRL compatibility
+    print("\n📝 Renaming conversations to messages for TRL format...")
+    dataset = dataset.rename_column("conversations", "messages")
 
-    def format_conversations(examples):
-        """Format conversations using model's built-in chat template."""
-        convos = examples["conversations"]
-        texts = [
-            tokenizer.apply_chat_template(
-                convo,
-                tokenize=False,
-                add_generation_prompt=False
-            ) for convo in convos
-        ]
-        return {"text": texts}
+    # Remove other columns, keep only messages
+    columns_to_remove = [col for col in dataset.column_names if col != "messages"]
+    dataset = dataset.remove_columns(columns_to_remove)
 
-    # Apply formatting and remove all columns except 'text'
-    print("Formatting conversations...")
-    columns_to_keep = ["text"]
-    columns_to_remove = [col for col in dataset.column_names if col not in columns_to_keep]
-    dataset = dataset.map(format_conversations, batched=True, remove_columns=columns_to_remove)
-
-    print(f"✅ Formatted {len(dataset):,} examples")
+    print(f"✅ Dataset ready: {len(dataset):,} examples")
 
     return dataset
 

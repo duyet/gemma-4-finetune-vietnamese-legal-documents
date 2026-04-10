@@ -89,32 +89,15 @@ def main():
 
     print(f"✅ Loaded {len(train_dataset):,} examples")
 
-    # Format conversations using built-in tokenizer chat template
-    print("\n📝 Formatting conversations...")
+    # Rename conversations to messages for TRL compatibility
+    print("\n📝 Renaming conversations to messages for TRL format...")
+    train_dataset = train_dataset.rename_column("conversations", "messages")
 
-    def format_conversations(examples):
-        """Format conversations using model's built-in chat template."""
-        convos = examples["conversations"]
-        texts = [
-            tokenizer.apply_chat_template(
-                convo,
-                tokenize=False,
-                add_generation_prompt=False
-            ) for convo in convos
-        ]
-        return {"text": texts}
+    # Remove other columns, keep only messages
+    columns_to_remove = [col for col in train_dataset.column_names if col != "messages"]
+    train_dataset = train_dataset.remove_columns(columns_to_remove)
 
-    # Apply formatting
-    print("Formatting conversations...")
-    columns_to_keep = ["text"]
-    columns_to_remove = [col for col in train_dataset.column_names if col not in columns_to_keep]
-    train_dataset = train_dataset.map(
-        format_conversations,
-        batched=True,
-        remove_columns=columns_to_remove
-    )
-
-    print(f"✅ Formatted {len(train_dataset):,} examples")
+    print(f"✅ Dataset ready: {len(train_dataset):,} examples")
 
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
