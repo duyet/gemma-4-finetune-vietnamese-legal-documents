@@ -57,7 +57,8 @@ setup_dependencies()
 
 import torch
 from datasets import load_dataset
-from unsloth import FastLanguageModel
+# Unsloth imported after setup to use correct transformers version
+# from unsloth import FastLanguageModel
 from trl import SFTTrainer, SFTConfig
 
 
@@ -188,6 +189,9 @@ def load_training_data(config, tokenizer):
 
 def train(config):
     """Run training with Unsloth."""
+    # Import Unsloth after transformers upgrade
+    from unsloth import FastLanguageModel
+
     print("\n" + "="*60)
     print("UNSLOOTH TRAINING")
     print("="*60)
