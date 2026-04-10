@@ -20,6 +20,34 @@ import json
 from pathlib import Path
 from datetime import datetime
 
+def setup_dependencies():
+    """Upgrade dependencies for Gemma 4 support."""
+    import subprocess
+
+    print("\n" + "="*60)
+    print("SETUP DEPENDENCIES")
+    print("="*60)
+
+    # Upgrade transformers for Gemma 4 support
+    print("\n📦 Upgrading transformers for Gemma 4 support...")
+    subprocess.check_call([
+        sys.executable, "-m", "pip", "install", "--quiet",
+        "--upgrade", "transformers>=4.57.2"
+    ])
+    print("✅ Transformers upgraded")
+
+    # Install required packages
+    print("📦 Installing required packages...")
+    subprocess.check_call([
+        sys.executable, "-m", "pip", "install", "--quiet",
+        "packaging", "wheel"
+    ])
+    print("✅ Dependencies installed")
+
+
+# Run setup before any imports
+setup_dependencies()
+
 import torch
 from datasets import load_dataset
 from unsloth import FastLanguageModel
