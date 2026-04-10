@@ -1,0 +1,13 @@
+{
+  "started_at": "2026-04-10T20:52:21Z",
+  "attempts": 1,
+  "successful_jobs": [],
+  "failed_jobs": ["attempt-1-credit-limit"],
+  "last_status": "credit_limit_blocking",
+  "last_update": "2026-04-11T03:52:28Z",
+  "next_retry": "2026-04-11T03:57:28Z",
+  "strategy": "model_rotation",
+  "models_tried": ["Qwen/Qwen2.5-3B-Instruct"],
+  "monitor_active": true,
+  "note": "Monitor will automatically retry every 5 minutes until success or max attempts"
+}
